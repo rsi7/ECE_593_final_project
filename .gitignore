@@ -1,0 +1,18 @@
+# .gitignore file for ECE 593 Final Project
+
+$ cat .gitignore
+
+# skip everything in /docs
+# these are just PDFs and Word files
+
+/docs/*
+
+# skip everything in results
+# text files & PDF waveform plot
+
+/results/*
+
+# skip everything in Micron folder
+# these HDL files are just for reference
+
+/hdl/Micron_MT47H32M16_37E/*
