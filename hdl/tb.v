@@ -1,21 +1,7 @@
-/////////////////////////////////////////////////////////////////
-// Filename        : tb.v									   //
-// Description     : EE577b DDR2 Controller Testbench		   //
-// Author          : Dr. Rashed Z. Bhatti					   //
-// Created On      : Thu Oct 23 23:14:54 2008				   //
-// Last Modified   : March 15th 2009
-/////////////////////////////////////////////////////////////////
-// The DDR2 model is provided by Denali Software Inc
-// -------------------------------------------------
-// Following files are required for simulations
-// mt47h32m16_37e.v
-// mt47h32m16_37e.soma
-//
-// This Testbench uses Chris Spear's file IO PLI
-// ---------------------------------------------
-// You need fileio.so file in your simulation directory
-// Add the following switch to the ncelab
-// -loadpli1 $(PWD)/fileio.so:bstrap
+// Module: tb.sv
+// Author: Rehan Iqbal
+// Date: March 17th, 2018
+// Organziation: Portland State University
 //
 // User defined Test Pattern is fetched from INPUT_FILE_NAME
 // The file should have data in five columns
@@ -29,7 +15,7 @@
 // 10  0           0     0   1
 // 0   6     1BABAFE  BABA   1
 // 0   0     1BABAFE  CAFE   1
-
+//
 // The testbench provides 500MHz clock
 // The testbench provides an active low reset
 // After reset a one cycle long initddr signal is issued
@@ -38,17 +24,18 @@
 // waits for "WaitForCycles" (given in the first column of the fetched line) and then put the 
 // Cmd , Addr, Data and Read to the ports of the DDR2 controller
 // If the WaitForCycles = 0 then the values are applied in the same cycles
-
+//
 // Notes:
 // (1) Test Pattern file should not have text header of any kind
 // (2) Test Pattern file should not have any blank lines
-
+//
+////////////////////////////////////////////////////////////////////////////////
 
 `timescale  1ns/10ps
 
 module tb();
 `define INPUT_FILE_NAME "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_test_pattern.txt"
-`define TRACE_FILE_NAME "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_test.trc"  //Not used 
+`define TRACE_FILE_NAME "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_test.trc" 
 `define DUMP_FILE_NAME  "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_out.dump"
 `define EOF 9'h1FF
 `define NULL 0  
@@ -141,6 +128,8 @@ module tb();
 		// Now wait for DDR to be ready
 		$display("MSG: Waiting for DDR2 to become ready");
 		wait (ready);
+		// Now run DDR2 module initialization task
+		i_ddr2.initialize();
 
 		// Open Test Pattern File
 		fin = $fopen(`INPUT_FILE_NAME,"r");
@@ -179,9 +168,6 @@ module tb();
 		$display("MSG: End Simulation!!!");
 		$stop;
 	 end // initial begin
-
-
- 
    
    // This block only tests if the applied current test pattern is consumed or not
    // Then triggers next fetch and apply
@@ -218,8 +204,6 @@ module tb();
 				 end
 			end // else: !if(waiting != 0)
 	 end // always @ (posedge clk)
-   
-   
 
    // This is only triggered if last applied commad is consumed
    // If there are no more test patterns then this would set the Test_pattern_injection_done bit
@@ -345,10 +329,6 @@ module tb();
 		  end
 	 end // always @ (ApplyTestPattern)
    
-   
-   
-
-   
    // Open a File to write output
    initial
 	 f_dump1=$fopen(`DUMP_FILE_NAME,"w"); 
@@ -367,60 +347,74 @@ module tb();
    always @ (posedge clk)
 	 cycle_counter <= cycle_counter +1;
    
+   	/************************************************************************/
+	/* DDR2 Controller instantiation										*/
+	/************************************************************************/
 
-   ddr2_controller XCON (
-						 // Outputs
-						 .DOUT					(dout[15:0]),
-						 .RADDR					(raddr[24:0]),
-						 .FILLCOUNT				(fillcount[6:0]),
-						 .VALIDOUT				(validout),
-						 .NOTFULL			    (notfull),
-						 .READY					(ready),
-						 .C0_CK_PAD				(c0_ck_pad),
-						 .C0_CKBAR_PAD			(c0_ckbar_pad),
-						 .C0_CKE_PAD			(c0_cke_pad),
-						 .C0_CSBAR_PAD			(c0_csbar_pad),
-						 .C0_RASBAR_PAD			(c0_rasbar_pad),
-						 .C0_CASBAR_PAD			(c0_casbar_pad),
-						 .C0_WEBAR_PAD			(c0_webar_pad),
-						 .C0_BA_PAD				(c0_ba_pad[1:0]),
-						 .C0_A_PAD				(c0_a_pad[12:0]),
-						 .C0_DM_PAD				(c0_dm_pad[1:0]),
-						 .C0_ODT_PAD			(c0_odt_pad),
-						 // Inouts
-						 .C0_DQ_PAD				(c0_dq_pad[15:0]),
-						 .C0_DQS_PAD			(c0_dqs_pad[1:0]),
-						 .C0_DQSBAR_PAD			(c0_dqsbar_pad[1:0]),
-						 // Inputs
-						 .CLK					(clk),
-						 .RESET					(reset),
-						 .CMD					(cmd[2:0]),
-						 .SZ					(sz[1:0]),
-						 .OP					(op[2:0]),
-						 .DIN					(din[15:0]),
-						 .ADDR					(addr[24:0]),
-						 .FETCHING				(fetching),
-						 .INITDDR				(initddr)
-						 );
+	ddr2_controller XCON (
 
+		// Inputs from Stimulator
+		.CLK					(clk),
+		.RESET					(reset),
+		.CMD					(cmd[2:0]),
+		.SZ						(sz[1:0]),
+		.OP						(op[2:0]),
+		.DIN					(din[15:0]),
+		.ADDR					(addr[24:0]),
+		.FETCHING				(fetching),
+		.INITDDR				(initddr),
 
-	   ddr2 i_ddr2 (
+		// Inouts between DRAM
+		.C0_DQ_PAD				(c0_dq_pad[15:0]),
+		.C0_DQS_PAD				(c0_dqs_pad[1:0]),
+		.C0_DQSBAR_PAD			(c0_dqsbar_pad[1:0]),
 
-	   	.ck			(c0_ck_pad),
-	   	.ck_n		(c0_ckbar_pad),
-	   	.cke		(c0_cke_pad),
-	   	.cs_n		(c0_csbar_pad),
-	   	.ras_n		(c0_rasbar_pad),
-	   	.cas_n		(c0_casbar_pad),
-	   	.we_n		(c0_webar_pad),
-	   	.dm_rdqs	(c0_dm_pad),
-	   	.ba			(c0_ba_pad),
-	   	.addr		(c0_a_pad),
-	   	.dq			(c0_dq_pad),
-	   	.dqs		(c0_dqs_pad),
-	   	.dqs_n		(c0_dqsbar_pad),
-	   	.rdqs_n		(),
-	   	.odt		(c0_odt_pad));
-   
+		// Outputs to DRAM
+		.DOUT					(dout[15:0]),
+		.RADDR					(raddr[24:0]),
+		.FILLCOUNT				(fillcount[6:0]),
+		.VALIDOUT				(validout),
+		.NOTFULL			    (notfull),
+		.READY					(ready),
+		.C0_CK_PAD				(c0_ck_pad),
+		.C0_CKBAR_PAD			(c0_ckbar_pad),
+		.C0_CKE_PAD				(c0_cke_pad),
+		.C0_CSBAR_PAD			(c0_csbar_pad),
+		.C0_RASBAR_PAD			(c0_rasbar_pad),
+		.C0_CASBAR_PAD			(c0_casbar_pad),
+		.C0_WEBAR_PAD			(c0_webar_pad),
+		.C0_BA_PAD				(c0_ba_pad[1:0]),
+		.C0_A_PAD				(c0_a_pad[12:0]),
+		.C0_DM_PAD				(c0_dm_pad[1:0]),
+		.C0_ODT_PAD				(c0_odt_pad)
+		
+	);
+
+	/************************************************************************/
+	/* DDR2 DRAM instantiation												*/
+	/************************************************************************/
+
+	ddr2_dram i_ddr2_dram (
+
+		.ck			(c0_ck_pad),			// I [0:0]  Diffpair clock for data (posedge samples)
+		.ck_n		(c0_ckbar_pad),			// I [0:0]  Diffpair clock for data (negedge samples)
+		.cke		(c0_cke_pad),			// I [0:0]  Active-high: enables clocking circuitry
+
+		.ba			(c0_ba_pad),			// I [1:0]  Bank address (which bank to ACTIVATE, READ, WRITE, or PRECHARGE) 
+		.addr		(c0_a_pad),				// I [12:0] Row address for ACTIVATE & column address for READ/WRITE... A[10] is precharge
+
+		.cs_n		(c0_csbar_pad),			// I [0:0]  Active-low: enables command decoder
+		.ras_n		(c0_rasbar_pad),		// I [0:0]  Active-low row address strobe
+		.cas_n		(c0_casbar_pad),		// I [0:0]  Active-low column address strobe
+		.we_n		(c0_webar_pad),			// I [0:0]  Active low write-enable
+
+		.dq			(c0_dq_pad),			// IO [15:0] Bidirectional data bus for 32 Meg x 16
+		.dqs		(c0_dqs_pad),			// IO [1:0]  Diffpair strobe (output & edge-aligned for READ, input & center-aligned for WRITE)
+		.dqs_n		(c0_dqsbar_pad),		// IO [1:0]  Diffpair strobe (output & edge-aligned for READ, input & center-aligned for WRITE)
+
+		.dm_rdqs	(c0_dm_pad),			// I [1:0]  Active-high data mask (masks input data WRITE bytes)
+		.odt		(c0_odt_pad)			// I [0:0]  Active high on-die termination (internal resistors for DQ/DQS/DM signals)
+
+	);
+
 endmodule // tb
-
