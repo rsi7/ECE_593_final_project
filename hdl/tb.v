@@ -31,96 +31,120 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-`timescale  1ns/10ps
+`timescale  1ns / 10ps
 
 module tb();
 
-`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
+	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
+	`define EOF 9'h1FF
+	`define NULL 0  
 
-`define EOF 9'h1FF
-`define NULL 0  
+	/************************************************************************/
+	/* Local parameters and variables										*/
+	/************************************************************************/
 
-   wire [15:0]			dout;
-   wire [24:0] 			raddr;
-   wire [12:0] 			c0_a_pad;				
-   wire [1:0] 			c0_ba_pad;				
-   wire					c0_casbar_pad;			
-   wire					c0_ckbar_pad;			
-   wire					c0_cke_pad;				
-   wire					c0_ck_pad;				
-   wire					c0_csbar_pad;			
-   wire [1:0] 			c0_dm_pad;				
-   wire [1:0] 			c0_dqsbar_pad;			
-   wire [1:0] 			c0_dqs_pad;				
-   wire [15:0] 			c0_dq_pad;				
-   wire					c0_odt_pad;				
-   wire					c0_rasbar_pad;			
-   wire					c0_webar_pad;					
-   wire [6:0] 			fillcount;				
-   wire					notfull;				
-   wire					ready;					
-   wire					validout;	
+	//////////////////////////////////////////////
+	// Signals between DDR2 controller and DRAM //
+	//////////////////////////////////////////////
 
+	wire [15:0]			dout;
+	wire [24:0] 		raddr;
+	wire [12:0] 		c0_a_pad;				
+	wire [1:0] 			c0_ba_pad;				
+	wire				c0_casbar_pad;			
+	wire				c0_ckbar_pad;			
+	wire				c0_cke_pad;				
+	wire				c0_ck_pad;				
+	wire				c0_csbar_pad;			
+	wire [1:0] 			c0_dm_pad;				
+	wire [1:0] 			c0_dqsbar_pad;			
+	wire [1:0] 			c0_dqs_pad;				
+	wire [15:0] 		c0_dq_pad;				
+	wire				c0_odt_pad;				
+	wire				c0_rasbar_pad;			
+	wire				c0_webar_pad;					
+	wire [6:0] 			fillcount;				
+	wire				notfull;				
+	wire				ready;					
+	wire				validout;
 
-   reg [1:0] 			sz;
-   reg [2:0] 			op;
-   reg [24:0] 			addr;
-   reg					clk;
-   reg [2:0] 			cmd;
-   reg [15:0] 			din;
-   reg 					fetching;
-   reg					initddr;
-   reg					reset;
-   
-   wire 				DataFifoHasSpace, CmdFifoHasSpace;
-   integer 				c, r, fin, cycle_counter, start_count, end_count;
+	////////////////////////////////////////////////
+	// Command signals going into DDR2 controller //
+	////////////////////////////////////////////////
 
-   integer 				WaitCycles;
-   reg [2:0] 			Cmd;
-   reg [1:0] 			Sz;
-   reg [2:0] 			Op;
-   reg [24:0] 			Addr;
-   reg [15:0] 			Data;
-   reg 					Fetching;
+	reg [1:0] 			sz;
+	reg [2:0] 			op;
+	reg [24:0] 			addr;
+	reg					clk;
+	reg [2:0] 			cmd;
+	reg [15:0] 			din;
+	reg 				fetching;
+	reg					initddr;
+	reg					reset;
 
+	//////////////////////////////////////////
+	// Command signals read from input file //
+	//////////////////////////////////////////
 
-   // Control variables
-   reg 					test_pattern_injection_done, waiting, BlkWriteInProgress ;
-   event 				fetchNextTestPattern;
-   event 				ApplyTestPattern;
-   integer 				waitCount, blkWriteCount;
-   
-   assign 				DataFifoHasSpace = (fillcount <= 63) ? 1 : 0;
-   assign 				CmdFifoHasSpace  = notfull;
+	integer 			WaitCycles;
+	reg [2:0] 			Cmd;
+	reg [1:0] 			Sz;
+	reg [2:0] 			Op;
+	reg [24:0] 			Addr;
+	reg [15:0] 			Data;
+	reg 				Fetching;
 
-   assign 				#0.1 non_read_cmd_consumed =((DataFifoHasSpace == 1) && (CmdFifoHasSpace == 1) && (Cmd != 1) && (Cmd !=3) && (Cmd != 0) && (Cmd != 7));
-   assign 				#0.1 read_cmd_consumed = ((CmdFifoHasSpace == 1) && ((Cmd == 1) || (Cmd ==3)));
-   assign 				#0.1 nop_consumed = ((Cmd == 0) || (Cmd == 7));
-	 
-   // define clocks
-   initial clk = 0;
-   always #1 clk = ~clk; // 500MHz
-   
+	///////////////////////
+	// Control variables //
+	///////////////////////
 
-   initial
-	 begin
+	reg 			test_pattern_injection_done, waiting, BlkWriteInProgress;
+	event 			fetchNextTestPattern;
+	event 			ApplyTestPattern;
+	integer 		waitCount, blkWriteCount;
+	wire 			DataFifoHasSpace, CmdFifoHasSpace;
+	integer 		c, r, fhandle_in;
 
-	 	$timeformat(-9, 0, "ns", 8);
+	assign			DataFifoHasSpace = (fillcount <= 63) ? 1 : 0;
+	assign			CmdFifoHasSpace  = notfull;
+
+	assign			#0.1 non_read_cmd_consumed =((DataFifoHasSpace == 1) && (CmdFifoHasSpace == 1) && (Cmd != 1) && (Cmd !=3) && (Cmd != 0) && (Cmd != 7));
+	assign			#0.1 read_cmd_consumed = ((CmdFifoHasSpace == 1) && ((Cmd == 1) || (Cmd ==3)));
+	assign			#0.1 nop_consumed = ((Cmd == 0) || (Cmd == 7));
+
+	/************************************************************************/
+	/* System clock generation												*/
+	/************************************************************************/
+
+	initial begin 
+		clk = 0;
+	end
+
+	// Run at 500MHz
+	always #1 clk = ~clk;
+
+	/************************************************************************/
+	/* Reset & initialization												*/
+	/************************************************************************/
+
+	initial begin
+
+		$timeformat(-9, 0, "ns", 8);
 
 		test_pattern_injection_done = 1; // keep the testpattern activity suppressed
-		cycle_counter = 0;
 		reset = 1;
 		clk = 0;
 		initddr = 0;
-		addr     <= 0;
-		cmd      <= 0;
-		sz       <=0;
-		op       <=0;
-		din      <= 0;
-		// Initialize controll variables
+		addr <= 0;
+		cmd <= 0;
+		sz <=0;
+		op <=0;
+		din <= 0;
+
+		// Initialize control variables
 		waiting = 0;
 		BlkWriteInProgress = 0;
-  		waitCount = 0;
+		waitCount = 0;
 		blkWriteCount = 0;
 		repeat (5) @(negedge clk);
 		reset = 0;
@@ -128,202 +152,231 @@ module tb();
 		initddr  = 1;
 		@(negedge clk);
 		initddr  = 0;
+
 		// Now wait for DDR to be ready
 		$display("MSG: Waiting for DDR2 to become ready");
 		wait (ready);
 
 		// Open Test Pattern File
-		fin = $fopen(`INPUT_FILE_NAME,"r");
-        if (fin == `NULL) // If error opening file
-          begin
-             $display("*** ERROR *** Could not open the file %s\n", `INPUT_FILE_NAME);
-             $finish;
-          end
-        // Check for end of file eof;
-        c = $fgetc(fin);
-        if (c == `EOF)
-		  begin
-			 $display(" *** ERROR *** %s is an empty file\n", `INPUT_FILE_NAME);
-			 $finish;
-		  end
+		fhandle_in = $fopen(`INPUT_FILE_NAME,"r");
+
+		if (fhandle_in == `NULL) begin
+			$display("*** ERROR *** Could not open the file %s\n", `INPUT_FILE_NAME);
+			$finish;
+		end
+
+		// Check for end of file eof;
+		c = $fgetc(fhandle_in);
+		if (c == `EOF) begin
+			$display(" *** ERROR *** %s is an empty file\n", `INPUT_FILE_NAME);
+			$finish;
+		end
 
 		// Start the test pattern
 		@(posedge clk);
 		-> fetchNextTestPattern;
-		@ (posedge test_pattern_injection_done);
+
+		// All patterns from input file have been read... time to wrap up simulation
+		@(posedge test_pattern_injection_done);
 		$display("MSG: All test patterns are successfully applied");
 		$display("MSG: Now waiting to let the DDR2 controller drain out");
 		repeat (1500) @(negedge clk);
-		// Have the start_count, end_count and their differnce printed
-		//  Number_of_cycles 
 		$display("MSG: End Simulation!!!");
 		$stop;
-	 end // initial begin
-   
-   // This block only tests if the applied current test pattern is consumed or not
-   // Then triggers next fetch and apply
-   always @ (posedge clk)
-	 begin
+
+	end // initial begin
+
+	/************************************************************************/
+	/* Block: send commands to ddr2_controller								*/
+	/************************************************************************/
+
+	// This block only tests if the applied current test pattern is consumed or not
+	// Then triggers next fetch and apply
+
+	always @ (posedge clk) begin
 		// if previously applied command is consumed then
-		if (!test_pattern_injection_done)
-		  if (!waiting)
-			begin
-			   if ((BlkWriteInProgress  == 1) && (DataFifoHasSpace == 1))  // BlkWriteInProgress
-				 begin
-					blkWriteCount  <= #0.1 blkWriteCount - 1;
+		
+		if (!test_pattern_injection_done) begin
+
+			if (!waiting) begin
+
+				// BlkWriteInProgress
+				if ((BlkWriteInProgress  == 1) && (DataFifoHasSpace == 1)) begin
+
+					blkWriteCount <= #0.1 blkWriteCount - 1;
+
 					if (blkWriteCount  == 1)
-					  BlkWriteInProgress = 0;
+						BlkWriteInProgress = 0;
 					-> fetchNextTestPattern;
-				 end
-			   else if ((BlkWriteInProgress  == 0) && ((non_read_cmd_consumed) || (read_cmd_consumed) || (nop_consumed)))
-				 begin
-					if (Cmd == 4)
-					  begin
-						 BlkWriteInProgress = 1;
-						 blkWriteCount  <= #0.1 blkWriteCount - 1;
-					  end
+				end
+
+				else if ((BlkWriteInProgress  == 0) && ((non_read_cmd_consumed) || (read_cmd_consumed) || (nop_consumed))) begin
+
+					if (Cmd == 4) begin
+						BlkWriteInProgress = 1;
+						blkWriteCount <= #0.1 blkWriteCount - 1;
+					end
+
 					-> fetchNextTestPattern;
-				 end
+				end
 			end // if (waiting != 0)
-		  else
-			begin
-			   waitCount <= #0.1 waitCount -1;
-			   if (waitCount == 1)
-				 begin
+
+			else begin
+
+				waitCount <= #0.1 waitCount -1;
+				if (waitCount == 1) begin
 					waiting <=  #0.1 0;
 					-> ApplyTestPattern;
-				 end
+				end
 			end // else: !if(waiting != 0)
-	 end // always @ (posedge clk)
+		
+		end // if(!test_pattern_injection_done)
+
+	end // always@(posedge clk)
+
+	/************************************************************************/
+	/* Block: read input file												*/
+	/************************************************************************/
 
    // This is only triggered if last applied commad is consumed
    // If there are no more test patterns then this would set the Test_pattern_injection_done bit
    //
-   always @ (fetchNextTestPattern)
-	 begin
+	always@(fetchNextTestPattern) begin
+		
 		// fetchNextTestPattern <= #0.1 0;
-		if (c != `EOF)
-		  begin
-			 test_pattern_injection_done = 0;
-			 // Push the character back to the file then read the next time
-			 r = $ungetc(c, fin);
-			 // Read             WaitCycles, Cmd,    Sz, Op, Addr,    Data,        Fetching 
-			 //                   10           1     0   0   1BABAFE  CAFECAFE       1
-			 r = $fscanf(fin,"%d\t%d\t%d\t%d\t%x\t%x\t%d\n", WaitCycles, Cmd, Sz, Op, Addr, Data, Fetching);
-			 c = $fgetc(fin);
-			 if (WaitCycles == 0)
-			   begin
-				  waitCount <= #0.1 0;
-				  waiting <= #0.1 0;
-				  -> ApplyTestPattern;
-			   end
-			 else
-			   begin
-				  waitCount <= #0.1 WaitCycles ;
-				  waiting <= #0.1 1;
-				  cmd      <= #0.1 3'b0;
-				  din      <= #0.1 16'bx;
-				  addr     <= #0.1 25'bx;
-				  sz       <= #0.1 2'bx;
-				  op       <= #0.1 3'bx;
-			   end
-		  end // if (c != `EOF)
-		else
-		  begin // There are no more test patterns
-			 test_pattern_injection_done <= #0.1 1;
-			 Cmd      =  3'b0;
-			 Data     =  16'bx;
-			 Addr     =  25'bx;
-			 Sz       =  2'bx;
-			 Op       =  3'bx;
-			 Fetching =  3'b1;
-			 -> ApplyTestPattern;
-		  end // else: !if(c != `EOF)
-	 end // always @ (fetchNextTestPattern)
-   
-   // Commands
-   // ---------
-   // 000: No Operation (NOP)
-   // 001: Scalar Read  (SCR)
-   // 010: Scalar Write  (SCW)
-   // 011: Block Read (BLR)
-   // 100: Block Write ((BLW)
-   // 101: Atomic Read (ATR)
-   // 110: Atomic Write (ATW)
-   // 111: No Operation (NOP)
+		if (c != `EOF) begin
 
-   always @ (ApplyTestPattern)
-	 begin
-		if (BlkWriteInProgress)
-		  begin
-			 cmd      <= #0.1 3'bx;
-			 din      <= #0.1 Data;
-			 addr     <= #0.1 25'bx;
-			 sz       <= #0.1 2'bx;
-			 op       <= #0.1 3'bx; 
-			 fetching <= #0.1 Fetching;
-		  end
-		else if ((Cmd == 0) || (Cmd == 7)) // 001 0r 111 (NOP)
-		  begin
-			 cmd      <= #0.1 Cmd;
-			 din      <= #0.1 16'bx;
-			 addr     <= #0.1 25'bx;
-			 sz       <= #0.1 2'bx;
-			 op       <= #0.1 3'bx; 
-			 fetching <= #0.1 Fetching;
-		  end
-		else if (Cmd == 1) // 001: Scalar Read  (SCR)
-		  begin
-			 cmd      <= #0.1 Cmd;
-			 din      <= #0.1 16'bx;
-			 addr     <= #0.1 Addr;
-			 sz       <= #0.1 2'bx;
-			 op       <= #0.1 3'bx; 
-			 fetching <= #0.1 Fetching;
-		  end
-		else if (Cmd == 2) // 010: Scalar Write  (SCW)
-		  begin
-			 cmd      <= #0.1 Cmd; 
-			 din      <= #0.1 Data;								 
-			 addr     <= #0.1 Addr;
-			 sz       <= #0.1 2'bx;
-			 op       <= #0.1 3'bx;
-			 fetching <= #0.1 Fetching;
-		  end
-		else if (Cmd == 3) // 011: Block Read (BLR)
-		  begin
-			 cmd      <= #0.1 Cmd;
-			 din      <= #0.1 16'bx;
-			 addr     <= #0.1 Addr;
-			 sz       <= #0.1 Sz;
-			 op       <= #0.1 3'bx; 
-			 fetching <= #0.1 Fetching;
-		  end
-		else if (Cmd == 4) // 100: Block Write ((BLW)
-		  begin
-			 cmd      <= #0.1 Cmd; 
-			 din      <= #0.1 Data;								 
-			 addr     <= #0.1 Addr;
-			 sz       <= #0.1 Sz;
-			 op       <= #0.1 3'bx;
-			 fetching <= #0.1 Fetching;
-			 blkWriteCount <= #0.1 (8 * (Sz + 1));
-		  end
-		else if ((Cmd == 5) || (Cmd == 6)) // 101: Atomic Read (ATR) or 110: Atomic Write (ATW)
-		  begin
-			 cmd      <= #0.1 Cmd; 
-			 din      <= #0.1 Data;								 
-			 addr     <= #0.1 Addr;
-			 sz       <= #0.1 Sz;
-			 op       <= #0.1 Op;
-			 fetching <= #0.1 Fetching;
-		  end
-	 end // always @ (ApplyTestPattern)
+			test_pattern_injection_done = 0;
+			
+			// Push the character back to the file then read the next time
+			r = $ungetc(c, fhandle_in);
+			// Read             WaitCycles, Cmd,    Sz, Op, Addr,    Data,        Fetching 
+			//                   10           1     0   0   1BABAFE  CAFECAFE       1
+			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%x\t%d\n", WaitCycles, Cmd, Sz, Op, Addr, Data, Fetching);
+			c = $fgetc(fhandle_in);
+			
+			if (WaitCycles == 0) begin
+				waitCount	<= #0.1 0;
+				waiting		<= #0.1 0;
+				-> ApplyTestPattern;
+			end
+			
+			else begin
+				waitCount	<= #0.1 WaitCycles;
+				waiting		<= #0.1 1;
+				cmd			<= #0.1 3'b0;
+				din			<= #0.1 16'bx;
+				addr		<= #0.1 25'bx;
+				sz			<= #0.1 2'bx;
+				op			<= #0.1 3'bx;
+			end
 
-   always @ (posedge clk)
-	 cycle_counter <= cycle_counter +1;
-   
-   	/************************************************************************/
+		end // if (c != `EOF)
+		
+		// There are no more test patterns... set 'test_pattern_injection_done' flag
+		else begin 
+			test_pattern_injection_done <= #0.1 1;
+			Cmd			= 3'b0;
+			Data		= 16'bx;
+			Addr		= 25'bx;
+			Sz			= 2'bx;
+			Op			= 3'bx;
+			Fetching	= 3'b1;
+			-> ApplyTestPattern;
+		end // else: !if(c != `EOF)
+
+	end // always@(fetchNextTestPattern)
+
+	/************************************************************************/
+	/* Block: send commands to ddr2_controller								*/
+	/************************************************************************/
+
+	// Commands
+	// ---------
+	// 000: No Operation (NOP)
+	// 001: Scalar Read  (SCR)
+	// 010: Scalar Write  (SCW)
+	// 011: Block Read (BLR)
+	// 100: Block Write ((BLW)
+	// 101: Atomic Read (ATR)
+	// 110: Atomic Write (ATW)
+	// 111: No Operation (NOP)
+
+	always@(ApplyTestPattern) begin
+
+		if (BlkWriteInProgress) begin
+			cmd			<= #0.1 3'bx;
+			din			<= #0.1 Data;
+			addr		<= #0.1 25'bx;
+			sz			<= #0.1 2'bx;
+			op			<= #0.1 3'bx; 
+			fetching	<= #0.1 Fetching;
+		end
+
+		// 111 or 000: No Operation (NOP)
+		else if ((Cmd == 0) || (Cmd == 7)) begin
+			cmd			<= #0.1 Cmd;
+			din			<= #0.1 16'bx;
+			addr		<= #0.1 25'bx;
+			sz			<= #0.1 2'bx;
+			op			<= #0.1 3'bx; 
+			fetching	<= #0.1 Fetching;
+		end
+
+		// 001: Scalar Read (SCR)
+		else if (Cmd == 1) begin
+			cmd			<= #0.1 Cmd;
+			din			<= #0.1 16'bx;
+			addr		<= #0.1 Addr;
+			sz			<= #0.1 2'bx;
+			op			<= #0.1 3'bx; 
+			fetching	<= #0.1 Fetching;
+		end
+
+		// 010: Scalar Write  (SCW)
+		else if (Cmd == 2) begin
+			cmd			<= #0.1 Cmd; 
+			din			<= #0.1 Data;								 
+			addr		<= #0.1 Addr;
+			sz			<= #0.1 2'bx;
+			op			<= #0.1 3'bx;
+			fetching	<= #0.1 Fetching;
+		end
+
+		// 011: Block Read (BLR)
+		else if (Cmd == 3) begin
+			cmd			<= #0.1 Cmd;
+			din			<= #0.1 16'bx;
+			addr		<= #0.1 Addr;
+			sz			<= #0.1 Sz;
+			op			<= #0.1 3'bx; 
+			fetching	<= #0.1 Fetching;
+		end
+
+		// 100: Block Write ((BLW)
+		else if (Cmd == 4) begin
+			cmd				<= #0.1 Cmd; 
+			din				<= #0.1 Data;								 
+			addr			<= #0.1 Addr;
+			sz				<= #0.1 Sz;
+			op				<= #0.1 3'bx;
+			fetching		<= #0.1 Fetching;
+			blkWriteCount	<= #0.1 (8 * (Sz + 1));
+		end
+
+		// 101: Atomic Read (ATR) or 110: Atomic Write (ATW)
+		else if ((Cmd == 5) || (Cmd == 6)) begin
+			cmd			<= #0.1 Cmd; 
+			din			<= #0.1 Data;								 
+			addr		<= #0.1 Addr;
+			sz			<= #0.1 Sz;
+			op			<= #0.1 Op;
+			fetching	<= #0.1 Fetching;
+		end
+
+	end // always@(ApplyTestPattern)
+
+	/************************************************************************/
 	/* DDR2 Controller instantiation										*/
 	/************************************************************************/
 
