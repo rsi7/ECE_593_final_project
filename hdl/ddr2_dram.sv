@@ -91,6 +91,8 @@
 			CMD_READ : begin
 				if ((RAM.exists(addr)) && (cke_prev && cke)) begin
 					en_dq <= 1'b1;
+					en_dqs <= 1'b1;
+					en_dqs_n <= 1'b1;
 				end
 			end
 

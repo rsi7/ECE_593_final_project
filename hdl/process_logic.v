@@ -172,15 +172,15 @@ module process_logic #(
                 flag_a  <=  1'b0;
                 a       <=  a;
             end else if (block_state == B_ACT && !blkCnt_reg) begin
-                a   <=  {3'b001, column_address_wire};
+                a   <=  {3'b000, column_address_wire};
                 flag_a  <=  1'b1; 
             end else if (!cnt_reg) begin
                 if (state == ACTIVATE) begin 
-                    a   <=  {3'b001, column_address_wire};
+                    a   <=  {3'b000, column_address_wire};
                     flag_a  <=  1'b1;
                 end 
                 if (state == RPRE) begin 
-                    a   <=  {3'b001, 10'b0};
+                    a   <=  {3'b000, 10'b0};
                     flag_a  <=  1'b1;
                 end
             end
