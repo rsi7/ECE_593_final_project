@@ -252,7 +252,7 @@ module tb();
 			r = $ungetc(c, fhandle_in);
 			// Read             WaitCycles, Cmd,    Sz, Op, Addr,    Data,        Fetching 
 			//                   10           1     0   0   1BABAFE  CAFECAFE       1
-			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%x\t%d\n", WaitCycles, Cmd, Sz, Op, Addr, Data, Fetching);
+			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%x\t%x\t%x\t%d\n", WaitCycles, Cmd, Sz, Op, Addr[24:12], Addr[4:3], {Addr[11:5],Addr[2:0]}, Data, Fetching);
 			c = $fgetc(fhandle_in);
 			
 			if (WaitCycles == 0) begin
