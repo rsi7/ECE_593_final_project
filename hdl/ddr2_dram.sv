@@ -62,9 +62,23 @@
 	/* Local parameters and variables										*/
 	/************************************************************************/
 
-	unsigned logic	[ADDR_WIDTH-1:0]	RAM[MEM_WIDTH];
+	// Create RAM as an associative array (non-synthesizable)
+	// This makes it so that only populated entries take up space
+
+	// Useful as memory will likely be sparesly populated... 
+	// don't need allocate memory for each row until it gets used
+
+	logic unsigned [MEM_WIDTH-1:0]	RAM[ulogic13];
+
+	localparam		CMD_READ 		= 4'b0101;
+	localparam		CMD_WRITE 		= 4'b0100;
+	localparam		CMD_ACTIVATE	= 4'b0011;
+	localparam		CMD_PRECHRG		= 4'b0010;
+	localparam		CMD_NOP			= 4'b0111;
 
 	ulogic1		cke_prev;
+	ulogic1		en_dq, en_dqs, en_dqs_n;
+	ulogic16	addr_reg;
 
 	/************************************************************************/
 	/* always block : read/write memory										*/
@@ -74,25 +88,25 @@
 
 		case ({cs_n, ras_n, cas_n, we_n})
 
-			4'b0101 : begin		// READ
+			CMD_READ : begin
 				if ((RAM.exists(addr)) && (cke_prev && cke)) begin
-					repeat (4) @ (posedge ck);
-					dq <= RAM[addr];
+					en_dq <= 1'b1;
 				end
 			end
 
-			4'b0100 : begin		// WRITE
+			CMD_WRITE : begin
 				if (cke_prev && cke) begin
-					repeat (4) @ (posedge ck);
 					RAM.delete(addr);
-					RAM[addr] <= dq;
+					addr_reg <= addr;
+					@(posedge dqs[0]);
+					RAM[addr_reg] = dq;
 				end
 			end
 
-			else : begin
-				dq		<= 'z;
-				dqs		<= 'z;
-				dqs_n	<= 'z;
+			default : begin
+				en_dq		<= 1'b0;
+				en_dqs		<= 1'b0;
+				en_dqs_n	<= 1'b0;
 			end
 
 		endcase
@@ -101,5 +115,13 @@
 		cke_prev <= cke;
 
 	end
+
+	/************************************************************************/
+	/* Continuous assignments												*/
+	/************************************************************************/
+
+	assign dq = en_dq ? RAM[addr] : 'z;
+	assign dqs = en_dqs ? ck : 'z;
+	assign dqs_n = en_dqs_n ? ck_n : 'z;
 
 endmodule // ddr2_dram

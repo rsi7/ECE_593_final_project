@@ -34,9 +34,11 @@
 `timescale  1ns/10ps
 
 module tb();
-`define INPUT_FILE_NAME "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_test_pattern.txt"
-`define TRACE_FILE_NAME "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_test.trc" 
-`define DUMP_FILE_NAME  "C:/Users/riqbal/Desktop/DDR2/hdl/ddr2_out.dump"
+
+`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
+`define TRACE_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test.trc" 
+`define DUMP_FILE_NAME  "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_out.dump"
+
 `define EOF 9'h1FF
 `define NULL 0  
 
@@ -128,8 +130,6 @@ module tb();
 		// Now wait for DDR to be ready
 		$display("MSG: Waiting for DDR2 to become ready");
 		wait (ready);
-		// Now run DDR2 module initialization task
-		i_ddr2.initialize();
 
 		// Open Test Pattern File
 		fin = $fopen(`INPUT_FILE_NAME,"r");
@@ -387,7 +387,7 @@ module tb();
 		.C0_A_PAD				(c0_a_pad[12:0]),
 		.C0_DM_PAD				(c0_dm_pad[1:0]),
 		.C0_ODT_PAD				(c0_odt_pad)
-		
+
 	);
 
 	/************************************************************************/
