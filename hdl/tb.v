@@ -36,8 +36,6 @@
 module tb();
 
 `define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
-`define TRACE_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test.trc" 
-`define DUMP_FILE_NAME  "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_out.dump"
 
 `define EOF 9'h1FF
 `define NULL 0  
@@ -75,7 +73,7 @@ module tb();
    reg					reset;
    
    wire 				DataFifoHasSpace, CmdFifoHasSpace;
-   integer 				c, r, fin, fout_trc, f_dump1, cycle_counter, start_count, end_count;
+   integer 				c, r, fin, cycle_counter, start_count, end_count;
 
    integer 				WaitCycles;
    reg [2:0] 			Cmd;
@@ -106,6 +104,9 @@ module tb();
 
    initial
 	 begin
+
+	 	$timeformat(-9, 0, "ns", 8);
+
 		test_pattern_injection_done = 1; // keep the testpattern activity suppressed
 		cycle_counter = 0;
 		reset = 1;
@@ -145,13 +146,7 @@ module tb();
 			 $display(" *** ERROR *** %s is an empty file\n", `INPUT_FILE_NAME);
 			 $finish;
 		  end
-		// Open File to write the simulation trace 
-		fout_trc = $fopen(`TRACE_FILE_NAME,"w");
-        if (fout_trc == `NULL) // If error opening file
-          begin
-             $display("*** ERROR *** Could not open the file %s\n", `TRACE_FILE_NAME );
-             $finish;
-          end
+
 		// Start the test pattern
 		@(posedge clk);
 		-> fetchNextTestPattern;
@@ -161,10 +156,6 @@ module tb();
 		repeat (1500) @(negedge clk);
 		// Have the start_count, end_count and their differnce printed
 		//  Number_of_cycles 
-		// Close the Output file
-		$fwrite(f_dump1, "Cycle Count = %d\n", end_count - start_count);
-        $fclose(fout_trc);
-		$fclose(f_dump1);
 		$display("MSG: End Simulation!!!");
 		$stop;
 	 end // initial begin
@@ -328,21 +319,6 @@ module tb();
 			 fetching <= #0.1 Fetching;
 		  end
 	 end // always @ (ApplyTestPattern)
-   
-   // Open a File to write output
-   initial
-	 f_dump1=$fopen(`DUMP_FILE_NAME,"w"); 
-   
-   always @ (negedge clk)
-	 begin
-		if (fetching && validout)
-		  begin
-			 // Write the Address and the Data of the output FIFO
-			 $fwrite(f_dump1, "%h %h\n", raddr[24:0], dout[15:0]);
-			 end_count <= cycle_counter;
-		  end
-   	 end
-
 
    always @ (posedge clk)
 	 cycle_counter <= cycle_counter +1;
