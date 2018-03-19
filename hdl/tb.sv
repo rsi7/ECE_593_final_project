@@ -145,7 +145,14 @@ module tb();
 		$display("MSG: DDR2 controller is ready... now reading input test pattern file");
 
 		// Open test pattern input file... return error if file not found
-		assert ((fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) else $error("%m can't open file %s!\n", `INPUT_FILE_NAME);
+		InputFileCheck : assert ((fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) begin
+			$display("MSG: %m was able to open input file %s successfully!", `INPUT_FILE_NAME);
+		end
+
+		else begin
+			$error("ERROR: %m can't open file %s!", `INPUT_FILE_NAME);
+			$stop;
+		end
 
 		// Start reading the input file's test patterns
 		@(posedge clk);
