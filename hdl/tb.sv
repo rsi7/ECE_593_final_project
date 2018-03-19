@@ -3,31 +3,17 @@
 // Date: March 17th, 2018
 // Organziation: Portland State University
 //
-// User defined Test Pattern is fetched from INPUT_FILE_NAME
-// The file should have data in five columns
-// WaitForCycles[decimal]  Cmd[decimal]  Address[hex] Data[hex]   Read[decimal]
-// 
-// Sample Test Pattern File
-// 0   1     1BABAFE  CAFE   0
-// 0   1     1BABAFE  D0C0   0 
-// 0   2     1BABAFE  CAFE   0
-// 0   3     1BABAFE  CAFE   0
-// 10  0           0     0   1
-// 0   6     1BABAFE  BABA   1
-// 0   0     1BABAFE  CAFE   1
+// The testbench provides a 500MHz clock and active-low reset... after reset
+// a one-cycle long 'initddr' signal is issued. Testbench then waits for the
+// 'ready' signal to come out.
 //
-// The testbench provides 500MHz clock
-// The testbench provides an active low reset
-// After reset a one cycle long initddr signal is issued
-// Testbench then waits for the ready signal to come out
-// After ready becomes high the testbench fetches a line from the Test Pattern File every cycles,
-// waits for "WaitForCycles" (given in the first column of the fetched line) and then put the 
-// Cmd , Addr, Data and Read to the ports of the DDR2 controller
-// If the WaitForCycles = 0 then the values are applied in the same cycles
+// After 'read' goes high, the testbench fetches a line from the test pattern
+// input file every cycle, waits for the amount specified (first column in file),
+// and then applies 'Cmd', 'Addr', 'Data' and others onto the ports of the
+// DDR2 controller. If 'WaitCycles' is zero, these signals are applied same-cycle.
 //
-// Notes:
-// (1) Test Pattern file should not have text header of any kind
-// (2) Test Pattern file should not have any blank lines
+// Once all patterns have been read, it sets the 'test_pattern_injection_done'
+// which will wrap up simulation.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,73 +22,91 @@
 module tb();
 
 	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
-	`define NULL 0  
 
 	/************************************************************************/
 	/* Local parameters and variables										*/
 	/************************************************************************/
 
-	//////////////////////////////////////////////
-	// Signals between DDR2 controller and DRAM //
-	//////////////////////////////////////////////
+	///////////////////////////////////////////
+	// Signals between DDR2 controller & RAM //
+	///////////////////////////////////////////
+
+	wire [12:0] 		c0_a_pad;
+	wire [1:0] 			c0_ba_pad;
+	wire				c0_casbar_pad;
+	wire				c0_ckbar_pad;
+	wire				c0_cke_pad;
+	wire				c0_ck_pad;
+	wire				c0_csbar_pad;
+	wire [1:0] 			c0_dm_pad;
+	wire [1:0] 			c0_dqsbar_pad;
+	wire [1:0] 			c0_dqs_pad;
+	wire [15:0] 		c0_dq_pad;
+	wire				c0_odt_pad;
+	wire				c0_rasbar_pad;
+	wire				c0_webar_pad;
+
+	//////////////////////////////////////////////////////
+	// Output signals from DDR2 controller to testbench //
+	//////////////////////////////////////////////////////
 
 	wire [15:0]			dout;
 	wire [24:0] 		raddr;
-	wire [12:0] 		c0_a_pad;				
-	wire [1:0] 			c0_ba_pad;				
-	wire				c0_casbar_pad;			
-	wire				c0_ckbar_pad;			
-	wire				c0_cke_pad;				
-	wire				c0_ck_pad;				
-	wire				c0_csbar_pad;			
-	wire [1:0] 			c0_dm_pad;				
-	wire [1:0] 			c0_dqsbar_pad;			
-	wire [1:0] 			c0_dqs_pad;				
-	wire [15:0] 		c0_dq_pad;				
-	wire				c0_odt_pad;				
-	wire				c0_rasbar_pad;			
-	wire				c0_webar_pad;					
-	wire [6:0] 			fillcount;				
-	wire				notfull;				
-	wire				ready;					
+	wire				ready;
 	wire				validout;
 
-	////////////////////////////////////////////////
-	// Command signals going into DDR2 controller //
-	////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////
+	// Testbench command signals going into DDR2 controller //
+	//////////////////////////////////////////////////////////
 
-	reg [1:0] 			sz;
-	reg [2:0] 			op;
-	reg [24:0] 			addr;
-	reg					clk;
-	reg [2:0] 			cmd;
-	reg [15:0] 			din;
-	reg 				fetching;
-	reg					initddr;
-	reg					reset;
+	reg [1:0] 			sz = 0;
+	reg [2:0] 			op = 0;
+	reg [24:0] 			addr = 0;
+	reg					clk = 0;
+	reg [2:0] 			cmd = 0;
+	reg [15:0] 			din = 0;
+	reg 				fetching = 0;
+	reg					initddr = 0;
+	reg					reset = 1;
 
 	//////////////////////////////////////////
 	// Command signals read from input file //
 	//////////////////////////////////////////
 
-	integer 			WaitCycles;
-	reg [2:0] 			Cmd;
-	reg [1:0] 			Sz;
-	reg [2:0] 			Op;
-	reg [24:0] 			Addr;
-	reg [15:0] 			Data;
-	reg 				Fetching;
+	integer 			WaitCycles = 0;
+	reg [2:0] 			Cmd = 0;
+	reg [1:0] 			Sz = 0;
+	reg [2:0] 			Op = 0;
+	reg [24:0] 			Addr = 0;
+	reg [15:0] 			Data = 0;
+	reg 				Fetching = 0;
 
-	///////////////////////
-	// Control variables //
-	///////////////////////
+	////////////////////
+	// Task variables //
+	////////////////////
 
-	reg 			test_pattern_injection_done, waiting, BlkWriteInProgress;
-	event 			fetchNextTestPattern;
-	event 			ApplyTestPattern;
-	integer 		waitCount, blkWriteCount;
-	wire 			DataFifoHasSpace, CmdFifoHasSpace;
-	integer 		c, r, fhandle_in;
+	event 			fetchNextTestPattern, ApplyTestPattern;
+
+	reg 			test_pattern_injection_done = 1;
+	reg				waiting = 0;
+	reg				BlkWriteInProgress = 0;
+
+	integer 		waitCount = 0;
+	integer			blkWriteCount = 0;
+	integer 		line, fhandle_in;
+
+	/////////////////////////
+	// FIFO status signals //
+	/////////////////////////
+
+	wire 			DataFifoHasSpace;
+	wire			CmdFifoHasSpace;
+	wire [6:0] 		fillcount;
+	wire			notfull;
+
+	/************************************************************************/
+	/* Continuous Assignments												*/
+	/************************************************************************/
 
 	assign			DataFifoHasSpace = (fillcount <= 63) ? 1 : 0;
 	assign			CmdFifoHasSpace  = notfull;
@@ -115,36 +119,19 @@ module tb();
 	/* System clock generation												*/
 	/************************************************************************/
 
-	initial begin 
-		clk = 0;
-	end
-
-	// Run at 500MHz
+	// Run system-clock at 500MHz
 	always #1 clk = ~clk;
 
 	/************************************************************************/
-	/* Reset & initialization												*/
+	/* Main simulation block												*/
 	/************************************************************************/
 
 	initial begin
 
 		$timeformat(-9, 0, "ns", 8);
 
-		test_pattern_injection_done = 1; // keep the testpattern activity suppressed
-		reset = 1;
-		clk = 0;
-		initddr = 0;
-		addr <= 0;
-		cmd <= 0;
-		sz <=0;
-		op <=0;
-		din <= 0;
-
-		// Initialize control variables
-		waiting = 0;
-		BlkWriteInProgress = 0;
-		waitCount = 0;
-		blkWriteCount = 0;
+		// clear the 'reset' to DDR2 controller...
+		// then kick-off its initialization sequence
 		repeat (5) @(negedge clk);
 		reset = 0;
 		@(negedge clk);
@@ -152,28 +139,25 @@ module tb();
 		@(negedge clk);
 		initddr  = 0;
 
-		// Now wait for DDR to be ready
-		$display("MSG: Waiting for DDR2 to become ready");
+		// Check 'ready' flag to determine when controller has been initialized
+		$display("MSG: Waiting for DDR2 controller to become ready...");
 		wait (ready);
+		$display("MSG: DDR2 controller is ready... now reading input test pattern file");
 
-		// Open Test Pattern File
-		fhandle_in = $fopen(`INPUT_FILE_NAME,"r");
+		// Open test pattern input file... return error if file not found
+		assert ((fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) else $error("%m can't open file %s!\n", `INPUT_FILE_NAME);
 
-		if (fhandle_in == `NULL) begin
-			$display("*** ERROR *** Could not open the file %s\n", `INPUT_FILE_NAME);
-			$finish;
-		end
-
-		// Start the test pattern
+		// Start reading the input file's test patterns
 		@(posedge clk);
 		-> fetchNextTestPattern;
 
 		// All patterns from input file have been read... time to wrap up simulation
 		@(posedge test_pattern_injection_done);
-		$display("MSG: All test patterns are successfully applied");
-		$display("MSG: Now waiting to let the DDR2 controller drain out");
+		$display("MSG: All test patterns are successfully applied!");
+		$display("MSG: Now waiting to let the DDR2 controller drain out...");
+		
 		repeat (1500) @(negedge clk);
-		$display("MSG: End Simulation!!!");
+		$display("MSG: End of simulation at %t", $time);
 		$stop;
 
 	end // initial begin
@@ -247,9 +231,6 @@ module tb();
 
 			test_pattern_injection_done = 0;
 			
-			// Push the character back to the file then read the next time
-			r = $ungetc(c, fhandle_in);
-			
 			// Example1: Scalar write (SCW) of data 'FACE' to column 0x7A in bank 0, row 0x8F
 			// Example2: Scalar read (SCR) of data from column 0xB9 in bank 3, row 0x2E
 
@@ -258,7 +239,7 @@ module tb();
 			// 0			2		0		0		008F				0					07A								FACE	0
 			// 0			1		0		0		002E				3					0B9								0000	0
 
-			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%d\t%x\t%x\t%d\n", 
+			line = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%d\t%x\t%x\t%d\n", 
 									WaitCycles, 
 									Cmd, 
 									Sz, 
@@ -268,8 +249,6 @@ module tb();
 									{Addr[11:5],Addr[2:0]}, 
 									Data, 
 									Fetching);
-
-			c = $fgetc(fhandle_in);
 			
 			// Immediately apply test pattern if no wait is specified...
 			if (WaitCycles == 0) begin
@@ -406,9 +385,9 @@ module tb();
 	/* Instance: DDR2 Controller											*/
 	/************************************************************************/
 
-	ddr2_controller XCON (
+	ddr2_controller i_ddr2_controller (
 
-		// Inputs from Stimulator
+		// Inputs from testbench
 		.CLK					(clk),
 		.RESET					(reset),
 		.CMD					(cmd[2:0]),
@@ -419,18 +398,12 @@ module tb();
 		.FETCHING				(fetching),
 		.INITDDR				(initddr),
 
-		// Inouts between DRAM
+		// Bidirectional data signals going between controller <--> RAM
 		.C0_DQ_PAD				(c0_dq_pad[15:0]),
 		.C0_DQS_PAD				(c0_dqs_pad[1:0]),
 		.C0_DQSBAR_PAD			(c0_dqsbar_pad[1:0]),
 
-		// Outputs to DRAM
-		.DOUT					(dout[15:0]),
-		.RADDR					(raddr[24:0]),
-		.FILLCOUNT				(fillcount[6:0]),
-		.VALIDOUT				(validout),
-		.NOTFULL			    (notfull),
-		.READY					(ready),
+		// Control & address outputs to RAM
 		.C0_CK_PAD				(c0_ck_pad),
 		.C0_CKBAR_PAD			(c0_ckbar_pad),
 		.C0_CKE_PAD				(c0_cke_pad),
@@ -441,7 +414,15 @@ module tb();
 		.C0_BA_PAD				(c0_ba_pad[1:0]),
 		.C0_A_PAD				(c0_a_pad[12:0]),
 		.C0_DM_PAD				(c0_dm_pad[1:0]),
-		.C0_ODT_PAD				(c0_odt_pad)
+		.C0_ODT_PAD				(c0_odt_pad),
+
+		// Status signal outputs to testbench
+		.DOUT					(dout[15:0]),
+		.RADDR					(raddr[24:0]),
+		.FILLCOUNT				(fillcount[6:0]),
+		.VALIDOUT				(validout),
+		.NOTFULL			    (notfull),
+		.READY					(ready)
 
 	);
 
