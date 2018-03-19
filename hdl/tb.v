@@ -186,13 +186,14 @@ module tb();
 	// Then triggers next fetch and apply
 
 	always @ (posedge clk) begin
-		// if previously applied command is consumed then
-		
+
+		// Check if all test patterns have been read from input file...
 		if (!test_pattern_injection_done) begin
 
+			// Make sure no 'waiting' flag set by WaitCycles in input file...
 			if (!waiting) begin
 
-				// BlkWriteInProgress
+				// Check if a Block write (BLW) is currently happening...
 				if ((BlkWriteInProgress  == 1) && (DataFifoHasSpace == 1)) begin
 
 					blkWriteCount <= #0.1 blkWriteCount - 1;
@@ -202,8 +203,11 @@ module tb();
 					-> fetchNextTestPattern;
 				end
 
+				// No Block write in progress... see if previous command was consumed or not before
+				// grabbing the next test pattern from input file
 				else if ((BlkWriteInProgress  == 0) && ((non_read_cmd_consumed) || (read_cmd_consumed) || (nop_consumed))) begin
 
+					// If a Block write was specified, need to set the flag and count...
 					if (Cmd == 4) begin
 						BlkWriteInProgress = 1;
 						blkWriteCount <= #0.1 blkWriteCount - 1;
@@ -213,6 +217,8 @@ module tb();
 				end
 			end // if (waiting != 0)
 
+			// Otherwise, 'waiting' flag was set by WaitCycles field in input file... 
+			// Need to decrement waiting counter and eventually call 'ApplyTestPattern' task
 			else begin
 
 				waitCount <= #0.1 waitCount -1;
@@ -227,32 +233,52 @@ module tb();
 	end // always@(posedge clk)
 
 	/************************************************************************/
-	/* Block: read input file												*/
+	/* Task: fetchNextTestPattern											*/
 	/************************************************************************/
 
-   // This is only triggered if last applied commad is consumed
-   // If there are no more test patterns then this would set the Test_pattern_injection_done bit
-   //
+	// This task reads the input file to fetch the next test pattern to apply
+	// This is only triggered if last applied command is consumed
+	// If there are no more test patterns, it sets the 'test_pattern_injection_done' flag
+
 	always@(fetchNextTestPattern) begin
 		
-		// fetchNextTestPattern <= #0.1 0;
+		// Check for end-of-file on input file
 		if (!($feof(fhandle_in))) begin
 
 			test_pattern_injection_done = 0;
 			
 			// Push the character back to the file then read the next time
 			r = $ungetc(c, fhandle_in);
-			// Read             WaitCycles, Cmd,    Sz, Op, Addr,    Data,        Fetching 
-			//                   10           1     0   0   1BABAFE  CAFECAFE       1
-			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%x\t%x\t%x\t%d\n", WaitCycles, Cmd, Sz, Op, Addr[24:12], Addr[4:3], {Addr[11:5],Addr[2:0]}, Data, Fetching);
+			
+			// Example1: Scalar write (SCW) of data 'FACE' to column 0x7A in bank 0, row 0x8F
+			// Example2: Scalar read (SCR) of data from column 0xB9 in bank 3, row 0x2E
+
+			// WaitCycle	Cmd		Size	Op		Row(Addr[25:12])	Bank(Addr[4:3])		Column({Addr[11:5],Addr[2:0]})	Data	Fetching
+			// ==============================================================================================================================
+			// 0			2		0		0		008F				0					07A								FACE	0
+			// 0			1		0		0		002E				3					0B9								0000	0
+
+			r = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%d\t%x\t%x\t%d\n", 
+									WaitCycles, 
+									Cmd, 
+									Sz, 
+									Op, 
+									Addr[24:12], 
+									Addr[4:3], 
+									{Addr[11:5],Addr[2:0]}, 
+									Data, 
+									Fetching);
+
 			c = $fgetc(fhandle_in);
 			
+			// Immediately apply test pattern if no wait is specified...
 			if (WaitCycles == 0) begin
 				waitCount	<= #0.1 0;
 				waiting		<= #0.1 0;
 				-> ApplyTestPattern;
 			end
 			
+			// Otherwise, set the 'waiting' flag and wait the appropriate amount of time... then apply
 			else begin
 				waitCount	<= #0.1 WaitCycles;
 				waiting		<= #0.1 1;
@@ -263,25 +289,33 @@ module tb();
 				op			<= #0.1 3'bx;
 			end
 
-		end // if !($feof(fhandle_in))
+		end // if !$feof(fhandle_in)
 		
-		// There are no more test patterns... set 'test_pattern_injection_done' flag
-		else begin 
+		// Input file has been read, and there are no more test patterns... 
+		// Set 'test_pattern_injection_done' flag which will trigger end of simulation
+
+		else begin
+
 			test_pattern_injection_done <= #0.1 1;
+
 			Cmd			= 3'b0;
 			Data		= 16'bx;
 			Addr		= 25'bx;
 			Sz			= 2'bx;
 			Op			= 3'bx;
 			Fetching	= 3'b1;
+
 			-> ApplyTestPattern;
+
 		end // else: $feof(fhandle_in)
 
 	end // always@(fetchNextTestPattern)
 
 	/************************************************************************/
-	/* Block: send commands to ddr2_controller								*/
+	/* Task: ApplyTestPattern												*/
 	/************************************************************************/
+
+	// This task actually applies the commands read in 'fetchNextTestPattern' task to the controller
 
 	// Commands
 	// ---------
@@ -328,7 +362,7 @@ module tb();
 		// 010: Scalar Write  (SCW)
 		else if (Cmd == 2) begin
 			cmd			<= #0.1 Cmd; 
-			din			<= #0.1 Data;								 
+			din			<= #0.1 Data;
 			addr		<= #0.1 Addr;
 			sz			<= #0.1 2'bx;
 			op			<= #0.1 3'bx;
@@ -348,7 +382,7 @@ module tb();
 		// 100: Block Write ((BLW)
 		else if (Cmd == 4) begin
 			cmd				<= #0.1 Cmd; 
-			din				<= #0.1 Data;								 
+			din				<= #0.1 Data;
 			addr			<= #0.1 Addr;
 			sz				<= #0.1 Sz;
 			op				<= #0.1 3'bx;
@@ -359,7 +393,7 @@ module tb();
 		// 101: Atomic Read (ATR) or 110: Atomic Write (ATW)
 		else if ((Cmd == 5) || (Cmd == 6)) begin
 			cmd			<= #0.1 Cmd; 
-			din			<= #0.1 Data;								 
+			din			<= #0.1 Data;
 			addr		<= #0.1 Addr;
 			sz			<= #0.1 Sz;
 			op			<= #0.1 Op;
@@ -369,7 +403,7 @@ module tb();
 	end // always@(ApplyTestPattern)
 
 	/************************************************************************/
-	/* DDR2 Controller instantiation										*/
+	/* Instance: DDR2 Controller											*/
 	/************************************************************************/
 
 	ddr2_controller XCON (
@@ -412,7 +446,7 @@ module tb();
 	);
 
 	/************************************************************************/
-	/* DDR2 DRAM instantiation												*/
+	/* Instance: DDR2 DRAM													*/
 	/************************************************************************/
 
 	ddr2_dram i_ddr2_dram (
