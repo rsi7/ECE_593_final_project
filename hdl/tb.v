@@ -36,7 +36,6 @@
 module tb();
 
 	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
-	`define EOF 9'h1FF
 	`define NULL 0  
 
 	/************************************************************************/
@@ -165,13 +164,6 @@ module tb();
 			$finish;
 		end
 
-		// Check for end of file eof;
-		c = $fgetc(fhandle_in);
-		if (c == `EOF) begin
-			$display(" *** ERROR *** %s is an empty file\n", `INPUT_FILE_NAME);
-			$finish;
-		end
-
 		// Start the test pattern
 		@(posedge clk);
 		-> fetchNextTestPattern;
@@ -244,7 +236,7 @@ module tb();
 	always@(fetchNextTestPattern) begin
 		
 		// fetchNextTestPattern <= #0.1 0;
-		if (c != `EOF) begin
+		if (!($feof(fhandle_in))) begin
 
 			test_pattern_injection_done = 0;
 			
@@ -271,7 +263,7 @@ module tb();
 				op			<= #0.1 3'bx;
 			end
 
-		end // if (c != `EOF)
+		end // if !($feof(fhandle_in))
 		
 		// There are no more test patterns... set 'test_pattern_injection_done' flag
 		else begin 
@@ -283,7 +275,7 @@ module tb();
 			Op			= 3'bx;
 			Fetching	= 3'b1;
 			-> ApplyTestPattern;
-		end // else: !if(c != `EOF)
+		end // else: $feof(fhandle_in)
 
 	end // always@(fetchNextTestPattern)
 

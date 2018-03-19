@@ -91,7 +91,7 @@
 			CMD_READ : begin
 				if ((RAM.exists(addr)) && (cke_prev && cke)) begin
 
-					$display("MSG: READ transaction of data '%x' to address 0x%x at %t", RAM[addr], addr, $time);
+					$display("MSG: READ transaction of data %x from address %x at %t", RAM[addr], addr, $time);
 
 					en_dq <= 1'b1;
 					en_dqs <= 1'b1;
@@ -104,10 +104,10 @@
 
 					RAM.delete(addr);
 					addr_reg <= addr;
-					
 					@(posedge dqs[0]);
-					$display("MSG: WRITE transaction of data '%x' to address 0x%x at %t", dq, addr, $time);
 					RAM[addr_reg] = dq;
+					$display("MSG: WRITE transaction of data %x to address %x at %t", dq, addr, $time);
+
 				end
 			end
 
