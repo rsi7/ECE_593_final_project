@@ -12,11 +12,12 @@
 // and then applies 'Cmd', 'Addr', 'Data' and others onto the ports of the
 // DDR2 controller. If 'WaitCycles' is zero, these signals are applied same-cycle.
 //
-// Once all patterns have been read, it sets the 'test_pattern_injection_done'
-// which will wrap up simulation.
+// Once all patterns have been read,'test_pattern_injection_done' flag set in
+// the driver module will let the testbench know to end simulation.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+`include "definitions.sv"
 `timescale  1ns / 10ps
 
 module tb();
@@ -27,93 +28,65 @@ module tb();
 	/* Local parameters and variables										*/
 	/************************************************************************/
 
-	///////////////////////////////////////////
-	// Signals between DDR2 controller & RAM //
-	///////////////////////////////////////////
+	/////////////
+	// Globals //
+	/////////////
 
-	wire [12:0] 		c0_a_pad;
-	wire [1:0] 			c0_ba_pad;
-	wire				c0_casbar_pad;
-	wire				c0_ckbar_pad;
-	wire				c0_cke_pad;
-	wire				c0_ck_pad;
-	wire				c0_csbar_pad;
-	wire [1:0] 			c0_dm_pad;
-	wire [1:0] 			c0_dqsbar_pad;
-	wire [1:0] 			c0_dqs_pad;
-	wire [15:0] 		c0_dq_pad;
-	wire				c0_odt_pad;
-	wire				c0_rasbar_pad;
-	wire				c0_webar_pad;
+	ulogic1		clk = 0;
+	ulogic1		reset = 1;
 
-	//////////////////////////////////////////////////////
-	// Output signals from DDR2 controller to testbench //
-	//////////////////////////////////////////////////////
+	////////////////////////////////////
+	// Testbench <--> DDR2 controller //
+	////////////////////////////////////
 
-	wire [15:0]			dout;
-	wire [24:0] 		raddr;
-	wire				ready;
-	wire				validout;
+	// Testbench --> DDR2 controller
+	ulogic1		initddr = 0;
 
-	//////////////////////////////////////////////////////////
-	// Testbench command signals going into DDR2 controller //
-	//////////////////////////////////////////////////////////
+	// DDR2 controller --> Testbench
+	ulogic1		ready;
+	ulogic16	dout;
+	ulogic25	raddr;
+	ulogic1		validout;
 
-	reg [1:0] 			sz = 0;
-	reg [2:0] 			op = 0;
-	reg [24:0] 			addr = 0;
-	reg					clk = 0;
-	reg [2:0] 			cmd = 0;
-	reg [15:0] 			din = 0;
-	reg 				fetching = 0;
-	reg					initddr = 0;
-	reg					reset = 1;
+	////////////////////////////////////////////
+	// Controller driver <--> DDR2 controller //
+	////////////////////////////////////////////
 
-	//////////////////////////////////////////
-	// Command signals read from input file //
-	//////////////////////////////////////////
+	// Driver --> DDR2 controller
+	ulogic3 	cmd;
+	ulogic2 	sz;
+	ulogic3 	op;
+	ulogic1		fetching;
+	ulogic16	din;
+	ulogic25 	addr;
 
-	integer 			WaitCycles = 0;
-	reg [2:0] 			Cmd = 0;
-	reg [1:0] 			Sz = 0;
-	reg [2:0] 			Op = 0;
-	reg [24:0] 			Addr = 0;
-	reg [15:0] 			Data = 0;
-	reg 				Fetching = 0;
+	// DDR2 controller --> driver
+	ulogic7		fillcount;
+	ulogic1		notfull;
 
-	////////////////////
-	// Task variables //
-	////////////////////
+	/////////////////////////////
+	// DDR2 controller --> RAM //
+	/////////////////////////////
+	
+	ulogic1		c0_ck_pad;
+	ulogic1		c0_ckbar_pad;
+	ulogic1		c0_cke_pad;
 
-	event 			fetchNextTestPattern, ApplyTestPattern;
+	ulogic2 	c0_ba_pad;
+	ulogic13	c0_a_pad;
 
-	reg 			test_pattern_injection_done = 1;
-	reg				waiting = 0;
-	reg				BlkWriteInProgress = 0;
+	ulogic1		c0_csbar_pad;
+	ulogic1		c0_casbar_pad;
+	ulogic1		c0_rasbar_pad;
+	ulogic1		c0_webar_pad;
 
-	integer 		waitCount = 0;
-	integer			blkWriteCount = 0;
-	integer 		line, fhandle_in;
+	// Bidirectional data signals
+	wire	[15:0]	c0_dq_pad;
+	wire 	[1:0]	c0_dqs_pad;
+	wire 	[1:0]	c0_dqsbar_pad;
 
-	/////////////////////////
-	// FIFO status signals //
-	/////////////////////////
-
-	wire 			DataFifoHasSpace;
-	wire			CmdFifoHasSpace;
-	wire [6:0] 		fillcount;
-	wire			notfull;
-
-	/************************************************************************/
-	/* Continuous Assignments												*/
-	/************************************************************************/
-
-	assign			DataFifoHasSpace = (fillcount <= 63) ? 1 : 0;
-	assign			CmdFifoHasSpace  = notfull;
-
-	assign			#0.1 non_read_cmd_consumed = ((DataFifoHasSpace == 1) && (CmdFifoHasSpace == 1) && (Cmd != 1) && (Cmd !=3) && (Cmd != 0) && (Cmd != 7));
-	assign			#0.1 read_cmd_consumed = ((CmdFifoHasSpace == 1) && ((Cmd == 1) || (Cmd ==3)));
-	assign			#0.1 nop_consumed = ((Cmd == 0) || (Cmd == 7));
+	ulogic2 	c0_dm_pad;
+	ulogic1		c0_odt_pad;
 
 	/************************************************************************/
 	/* System clock generation												*/
@@ -145,7 +118,7 @@ module tb();
 		$display("MSG: DDR2 controller is ready... now reading input test pattern file");
 
 		// Open test pattern input file... return error if file not found
-		InputFileCheck : assert ((fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) begin
+		InputFileCheck : assert ((i_controller_driver.fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) begin
 			$display("MSG: %m was able to open input file %s successfully!", `INPUT_FILE_NAME);
 		end
 
@@ -156,10 +129,10 @@ module tb();
 
 		// Start reading the input file's test patterns
 		@(posedge clk);
-		-> fetchNextTestPattern;
+		-> i_controller_driver.fetchNextTestPattern;
 
 		// All patterns from input file have been read... time to wrap up simulation
-		@(posedge test_pattern_injection_done);
+		@(posedge i_controller_driver.test_pattern_injection_done);
 		$display("MSG: All test patterns are successfully applied!");
 		$display("MSG: Now waiting to let the DDR2 controller drain out...");
 		
@@ -170,223 +143,28 @@ module tb();
 	end // initial begin
 
 	/************************************************************************/
-	/* Block: send commands to ddr2_controller								*/
+	/* Instance: Controller Driver											*/
 	/************************************************************************/
 
-	// This block only tests if the applied current test pattern is consumed or not
-	// Then triggers next fetch and apply
+	controller_driver i_controller_driver (
 
-	always @ (posedge clk) begin
+		// Globals
+		.clk			(clk), 
+		.reset			(reset),
 
-		// Check if all test patterns have been read from input file...
-		if (!test_pattern_injection_done) begin
+		// DDR2 controller --> driver
+		.fillcount		(fillcount),
+		.notfull		(notfull),
 
-			// Make sure no 'waiting' flag set by WaitCycles in input file...
-			if (!waiting) begin
-
-				// Check if a Block write (BLW) is currently happening...
-				if ((BlkWriteInProgress  == 1) && (DataFifoHasSpace == 1)) begin
-
-					blkWriteCount <= #0.1 blkWriteCount - 1;
-
-					if (blkWriteCount  == 1)
-						BlkWriteInProgress = 0;
-					-> fetchNextTestPattern;
-				end
-
-				// No Block write in progress... see if previous command was consumed or not before
-				// grabbing the next test pattern from input file
-				else if ((BlkWriteInProgress  == 0) && ((non_read_cmd_consumed) || (read_cmd_consumed) || (nop_consumed))) begin
-
-					// If a Block write was specified, need to set the flag and count...
-					if (Cmd == 4) begin
-						BlkWriteInProgress = 1;
-						blkWriteCount <= #0.1 blkWriteCount - 1;
-					end
-
-					-> fetchNextTestPattern;
-				end
-			end // if (waiting != 0)
-
-			// Otherwise, 'waiting' flag was set by WaitCycles field in input file... 
-			// Need to decrement waiting counter and eventually call 'ApplyTestPattern' task
-			else begin
-
-				waitCount <= #0.1 waitCount -1;
-				if (waitCount == 1) begin
-					waiting <=  #0.1 0;
-					-> ApplyTestPattern;
-				end
-			end // else: !if(waiting != 0)
-		
-		end // if(!test_pattern_injection_done)
-
-	end // always@(posedge clk)
-
-	/************************************************************************/
-	/* Task: fetchNextTestPattern											*/
-	/************************************************************************/
-
-	// This task reads the input file to fetch the next test pattern to apply
-	// This is only triggered if last applied command is consumed
-	// If there are no more test patterns, it sets the 'test_pattern_injection_done' flag
-
-	always@(fetchNextTestPattern) begin
-		
-		// Check for end-of-file on input file
-		if (!($feof(fhandle_in))) begin
-
-			test_pattern_injection_done = 0;
-			
-			// Example1: Scalar write (SCW) of data 'FACE' to column 0x7A in bank 0, row 0x8F
-			// Example2: Scalar read (SCR) of data from column 0xB9 in bank 3, row 0x2E
-
-			// WaitCycle	Cmd		Size	Op		Row(Addr[25:12])	Bank(Addr[4:3])		Column({Addr[11:5],Addr[2:0]})	Data	Fetching
-			// ==============================================================================================================================
-			// 0			2		0		0		008F				0					07A								FACE	0
-			// 0			1		0		0		002E				3					0B9								0000	0
-
-			line = $fscanf(fhandle_in,"%d\t%d\t%d\t%d\t%x\t%d\t%x\t%x\t%d\n", 
-									WaitCycles, 
-									Cmd, 
-									Sz, 
-									Op, 
-									Addr[24:12], 
-									Addr[4:3], 
-									{Addr[11:5],Addr[2:0]}, 
-									Data, 
-									Fetching);
-			
-			// Immediately apply test pattern if no wait is specified...
-			if (WaitCycles == 0) begin
-				waitCount	<= #0.1 0;
-				waiting		<= #0.1 0;
-				-> ApplyTestPattern;
-			end
-			
-			// Otherwise, set the 'waiting' flag and wait the appropriate amount of time... then apply
-			else begin
-				waitCount	<= #0.1 WaitCycles;
-				waiting		<= #0.1 1;
-				cmd			<= #0.1 3'b0;
-				din			<= #0.1 16'bx;
-				addr		<= #0.1 25'bx;
-				sz			<= #0.1 2'bx;
-				op			<= #0.1 3'bx;
-			end
-
-		end // if !$feof(fhandle_in)
-		
-		// Input file has been read, and there are no more test patterns... 
-		// Set 'test_pattern_injection_done' flag which will trigger end of simulation
-
-		else begin
-
-			test_pattern_injection_done <= #0.1 1;
-
-			Cmd			= 3'b0;
-			Data		= 16'bx;
-			Addr		= 25'bx;
-			Sz			= 2'bx;
-			Op			= 3'bx;
-			Fetching	= 3'b1;
-
-			-> ApplyTestPattern;
-
-		end // else: $feof(fhandle_in)
-
-	end // always@(fetchNextTestPattern)
-
-	/************************************************************************/
-	/* Task: ApplyTestPattern												*/
-	/************************************************************************/
-
-	// This task actually applies the commands read in 'fetchNextTestPattern' task to the controller
-
-	// Commands
-	// ---------
-	// 000: No Operation (NOP)
-	// 001: Scalar Read  (SCR)
-	// 010: Scalar Write  (SCW)
-	// 011: Block Read (BLR)
-	// 100: Block Write ((BLW)
-	// 101: Atomic Read (ATR)
-	// 110: Atomic Write (ATW)
-	// 111: No Operation (NOP)
-
-	always@(ApplyTestPattern) begin
-
-		if (BlkWriteInProgress) begin
-			cmd			<= #0.1 3'bx;
-			din			<= #0.1 Data;
-			addr		<= #0.1 25'bx;
-			sz			<= #0.1 2'bx;
-			op			<= #0.1 3'bx; 
-			fetching	<= #0.1 Fetching;
-		end
-
-		// 111 or 000: No Operation (NOP)
-		else if ((Cmd == 0) || (Cmd == 7)) begin
-			cmd			<= #0.1 Cmd;
-			din			<= #0.1 16'bx;
-			addr		<= #0.1 25'bx;
-			sz			<= #0.1 2'bx;
-			op			<= #0.1 3'bx; 
-			fetching	<= #0.1 Fetching;
-		end
-
-		// 001: Scalar Read (SCR)
-		else if (Cmd == 1) begin
-			cmd			<= #0.1 Cmd;
-			din			<= #0.1 16'bx;
-			addr		<= #0.1 Addr;
-			sz			<= #0.1 2'bx;
-			op			<= #0.1 3'bx; 
-			fetching	<= #0.1 Fetching;
-		end
-
-		// 010: Scalar Write  (SCW)
-		else if (Cmd == 2) begin
-			cmd			<= #0.1 Cmd; 
-			din			<= #0.1 Data;
-			addr		<= #0.1 Addr;
-			sz			<= #0.1 2'bx;
-			op			<= #0.1 3'bx;
-			fetching	<= #0.1 Fetching;
-		end
-
-		// 011: Block Read (BLR)
-		else if (Cmd == 3) begin
-			cmd			<= #0.1 Cmd;
-			din			<= #0.1 16'bx;
-			addr		<= #0.1 Addr;
-			sz			<= #0.1 Sz;
-			op			<= #0.1 3'bx; 
-			fetching	<= #0.1 Fetching;
-		end
-
-		// 100: Block Write ((BLW)
-		else if (Cmd == 4) begin
-			cmd				<= #0.1 Cmd; 
-			din				<= #0.1 Data;
-			addr			<= #0.1 Addr;
-			sz				<= #0.1 Sz;
-			op				<= #0.1 3'bx;
-			fetching		<= #0.1 Fetching;
-			blkWriteCount	<= #0.1 (8 * (Sz + 1));
-		end
-
-		// 101: Atomic Read (ATR) or 110: Atomic Write (ATW)
-		else if ((Cmd == 5) || (Cmd == 6)) begin
-			cmd			<= #0.1 Cmd; 
-			din			<= #0.1 Data;
-			addr		<= #0.1 Addr;
-			sz			<= #0.1 Sz;
-			op			<= #0.1 Op;
-			fetching	<= #0.1 Fetching;
-		end
-
-	end // always@(ApplyTestPattern)
+		// Driver --> DDR2 controller
+		.cmd			(cmd),
+		.sz				(sz),
+		.op				(op),
+		.fetching		(fetching),
+		.din			(din),
+		.addr			(addr)
+	
+	);
 
 	/************************************************************************/
 	/* Instance: DDR2 Controller											*/
@@ -394,23 +172,32 @@ module tb();
 
 	ddr2_controller i_ddr2_controller (
 
-		// Inputs from testbench
+		// Globals
 		.CLK					(clk),
 		.RESET					(reset),
+
+		// Testbench --> DDR2 controller
+		.INITDDR				(initddr),
+
+		// DDR2 controller --> testbench
+		.DOUT					(dout[15:0]),
+		.RADDR					(raddr[24:0]),
+		.VALIDOUT				(validout),
+		.READY					(ready),
+
+		// Driver --> DDR2 controller
 		.CMD					(cmd[2:0]),
 		.SZ						(sz[1:0]),
 		.OP						(op[2:0]),
 		.DIN					(din[15:0]),
 		.ADDR					(addr[24:0]),
 		.FETCHING				(fetching),
-		.INITDDR				(initddr),
 
-		// Bidirectional data signals going between controller <--> RAM
-		.C0_DQ_PAD				(c0_dq_pad[15:0]),
-		.C0_DQS_PAD				(c0_dqs_pad[1:0]),
-		.C0_DQSBAR_PAD			(c0_dqsbar_pad[1:0]),
+		// DDR2 controller --> driver
+		.FILLCOUNT				(fillcount[6:0]),
+		.NOTFULL			    (notfull),
 
-		// Control & address outputs to RAM
+		// DDR2 controller --> RAM
 		.C0_CK_PAD				(c0_ck_pad),
 		.C0_CKBAR_PAD			(c0_ckbar_pad),
 		.C0_CKE_PAD				(c0_cke_pad),
@@ -423,13 +210,10 @@ module tb();
 		.C0_DM_PAD				(c0_dm_pad[1:0]),
 		.C0_ODT_PAD				(c0_odt_pad),
 
-		// Status signal outputs to testbench
-		.DOUT					(dout[15:0]),
-		.RADDR					(raddr[24:0]),
-		.FILLCOUNT				(fillcount[6:0]),
-		.VALIDOUT				(validout),
-		.NOTFULL			    (notfull),
-		.READY					(ready)
+		// DDR2 controller <--> RAM
+		.C0_DQ_PAD				(c0_dq_pad[15:0]),
+		.C0_DQS_PAD				(c0_dqs_pad[1:0]),
+		.C0_DQSBAR_PAD			(c0_dqsbar_pad[1:0])
 
 	);
 

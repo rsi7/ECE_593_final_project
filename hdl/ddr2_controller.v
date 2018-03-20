@@ -559,4 +559,3 @@ module ddr2_controller  (
     assign  ck_i        = ck;
 
 endmodule // ddr2_controller
-

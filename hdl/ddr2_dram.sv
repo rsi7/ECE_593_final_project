@@ -94,6 +94,7 @@
 
 					addr_reg = addr;
 
+					// CAS Latency
 					repeat(7) @(posedge ck);
 
 					dqs_reg = 2'b00;
@@ -166,7 +167,7 @@
 					addr_reg <= addr;
 					wait(dqs == 2'b00);
 					@(posedge dqs[0]);
-					$display("MSG: WRITE transaction of data '%x' to address 0x%x at %t", dq, addr, $time);
+					$display("MSG: WRITE transaction of data '%x' to address 0x%x at %t", dq, addr_reg, $time);
 					RAM[addr_reg] = dq;
 				end
 			end
@@ -180,6 +181,7 @@
 		endcase
 
 		// Store previous value of cke
+		// Need cke_prev && cke to read/write according to datasheet
 		cke_prev <= cke;
 
 	end
