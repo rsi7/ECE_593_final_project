@@ -78,6 +78,7 @@
 
 	ulogic1		cke_prev;
 	ulogic1		en_dq, en_dqs, en_dqs_n;
+	ulogic2		dqs_reg, dqs_n_reg;
 	ulogic16	addr_reg;
 
 	/************************************************************************/
@@ -91,11 +92,70 @@
 			CMD_READ : begin
 				if ((RAM.exists(addr)) && (cke_prev && cke)) begin
 
+					addr_reg = addr;
+
+					repeat(7) @(posedge ck);
+
+					dqs_reg = 2'b00;
+					dqs_n_reg = 2'b11;
+					en_dqs = 1'b1;
+					en_dqs_n = 1'b1;
+
+					// First cycle
+					@(posedge ck);
+					dqs_reg = 2'b11;
+					dqs_n_reg = 2'b00;
+					en_dq = 1'b1;
 					$display("MSG: READ transaction of data '%x' from address 0x%x at %t", RAM[addr], addr, $time);
 
-					en_dq <= 1'b1;
-					en_dqs <= 1'b1;
-					en_dqs_n <= 1'b1;
+					// Second cycle
+					@(negedge ck);
+					dqs_reg = 2'b00;
+					dqs_n_reg = 2'b11;
+					addr_reg += 1'b1;
+
+					// Third cycle
+					@(posedge ck);
+					dqs_reg = 2'b11;
+					dqs_n_reg = 2'b00;
+					addr_reg += 1'b1;
+
+					// Fourth cycle
+					@(negedge ck);
+					dqs_reg = 2'b00;
+					dqs_n_reg = 2'b11;
+					addr_reg += 1'b1;
+
+					// Fifth cycle
+					@(posedge ck);
+					dqs_reg = 2'b11;
+					dqs_n_reg = 2'b00;
+					addr_reg += 1'b1;
+
+					// Sixth cycle
+					@(negedge ck);
+					dqs_reg = 2'b00;
+					dqs_n_reg = 2'b11;
+					addr_reg += 1'b1;
+
+					// Seventh cycle
+					@(posedge ck);
+					dqs_reg = 2'b11;
+					dqs_n_reg = 2'b00;
+					addr_reg += 1'b1;
+
+					// Eigth cycle
+					@(negedge ck);
+					dqs_reg = 2'b00;
+					dqs_n_reg = 2'b11;
+					addr_reg += 1'b1;
+
+					// End transaction
+					@(posedge ck);
+					en_dqs = 1'b0;
+					en_dqs_n = 1'b0;
+					en_dq = 1'b0;
+
 				end
 			end
 
@@ -104,7 +164,7 @@
 
 					RAM.delete(addr);
 					addr_reg <= addr;
-					
+					wait(dqs == 2'b00);
 					@(posedge dqs[0]);
 					$display("MSG: WRITE transaction of data '%x' to address 0x%x at %t", dq, addr, $time);
 					RAM[addr_reg] = dq;
@@ -112,9 +172,9 @@
 			end
 
 			default : begin
-				en_dq		<= 1'b0;
-				en_dqs		<= 1'b0;
-				en_dqs_n	<= 1'b0;
+				en_dq = 1'b0;
+				en_dqs = 1'b0;
+				en_dqs_n = 1'b0;
 			end
 
 		endcase
@@ -128,8 +188,8 @@
 	/* Continuous assignments												*/
 	/************************************************************************/
 
-	assign dq = en_dq ? RAM[addr] : 'z;
-	assign dqs = en_dqs ? ck : 'z;
-	assign dqs_n = en_dqs_n ? ck_n : 'z;
+	assign dq = en_dq ? (RAM.exists(addr_reg) ? RAM[addr_reg] : 16'b0) : 'z;
+	assign dqs = en_dqs ? dqs_reg : 'z;
+	assign dqs_n = en_dqs_n ? dqs_n_reg : 'z;
 
 endmodule // ddr2_dram

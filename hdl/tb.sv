@@ -111,7 +111,7 @@ module tb();
 	assign			DataFifoHasSpace = (fillcount <= 63) ? 1 : 0;
 	assign			CmdFifoHasSpace  = notfull;
 
-	assign			#0.1 non_read_cmd_consumed =((DataFifoHasSpace == 1) && (CmdFifoHasSpace == 1) && (Cmd != 1) && (Cmd !=3) && (Cmd != 0) && (Cmd != 7));
+	assign			#0.1 non_read_cmd_consumed = ((DataFifoHasSpace == 1) && (CmdFifoHasSpace == 1) && (Cmd != 1) && (Cmd !=3) && (Cmd != 0) && (Cmd != 7));
 	assign			#0.1 read_cmd_consumed = ((CmdFifoHasSpace == 1) && ((Cmd == 1) || (Cmd ==3)));
 	assign			#0.1 nop_consumed = ((Cmd == 0) || (Cmd == 7));
 
