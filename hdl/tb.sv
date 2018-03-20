@@ -3,17 +3,15 @@
 // Date: March 17th, 2018
 // Organziation: Portland State University
 //
-// The testbench provides a 500MHz clock and active-low reset... after reset
-// a one-cycle long 'initddr' signal is issued. Testbench then waits for the
-// 'ready' signal to come out.
+// The testbench provides a 500MHz clock (250MHz DDR clock) and active-low reset... 
+// after reset a one-cycle long 'initddr' signal is issued. 
+// Testbench then waits for the 'ready' signal to come out of DDR2 controller,
+// which handles this through the 'init_enginer' module.
 //
-// After 'read' goes high, the testbench fetches a line from the test pattern
-// input file every cycle, waits for the amount specified (first column in file),
-// and then applies 'Cmd', 'Addr', 'Data' and others onto the ports of the
-// DDR2 controller. If 'WaitCycles' is zero, these signals are applied same-cycle.
-//
-// Once all patterns have been read,'test_pattern_injection_done' flag set in
-// the driver module will let the testbench know to end simulation.
+// After 'ready' goes high, the testbench initiates the first 'FetchNextTestPattern'
+// task in the driver module. Then it waits - Once all patterns have been read,
+// 'test_pattern_injection_done' flag set in the driver module will let the 
+// testbench know to end simulation.
 //
 ////////////////////////////////////////////////////////////////////////////////
 

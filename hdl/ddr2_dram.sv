@@ -68,7 +68,9 @@
 	// Useful as memory will likely be sparesly populated... 
 	// don't need allocate memory for each row until it gets used
 
-	logic unsigned [MEM_WIDTH-1:0]	RAM[ulogic13];
+	// 4-banks of arrays, each w/ 8192 entries of 16-bit values (default)
+
+	logic unsigned [MEM_WIDTH-1:0]	RAM[*][ulogic13];
 
 	localparam		CMD_READ 		= 4'b0101;
 	localparam		CMD_WRITE 		= 4'b0100;
@@ -79,7 +81,9 @@
 	ulogic1		cke_prev;
 	ulogic1		en_dq, en_dqs, en_dqs_n;
 	ulogic2		dqs_reg, dqs_n_reg;
-	ulogic16	addr_reg;
+
+	ulogic13	addr_reg;
+	ulogic2		bank_reg;
 
 	/************************************************************************/
 	/* always block : read/write memory										*/
@@ -90,9 +94,10 @@
 		case ({cs_n, ras_n, cas_n, we_n})
 
 			CMD_READ : begin
-				if ((RAM.exists(addr)) && (cke_prev && cke)) begin
+				if ((RAM.exists(ba)&&RAM[ba].exists(addr)) && (cke_prev && cke)) begin
 
 					addr_reg = addr;
+					bank_reg = ba;
 
 					// CAS Latency
 					repeat(7) @(posedge ck);
@@ -107,7 +112,7 @@
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
 					en_dq = 1'b1;
-					$display("MSG: READ transaction of data '%x' from address 0x%x at %t", RAM[addr], addr, $time);
+					$display("MSG: READ transaction of data '%x' from bank %d, address 0x%x at %t", bank_reg, RAM[bank_reg][addr_reg], addr_reg, $time);
 
 					// Second cycle
 					@(negedge ck);
@@ -163,12 +168,13 @@
 			CMD_WRITE : begin
 				if (cke_prev && cke) begin
 
-					RAM.delete(addr);
+					RAM[ba].delete(addr);
 					addr_reg <= addr;
+					bank_reg <= ba;
 					wait(dqs == 2'b00);
 					@(posedge dqs[0]);
-					$display("MSG: WRITE transaction of data '%x' to address 0x%x at %t", dq, addr_reg, $time);
-					RAM[addr_reg] = dq;
+					$display("MSG: WRITE transaction of data '%x' to bank %d, address 0x%x at %t", dq, bank_reg, addr_reg, $time);
+					RAM[bank_reg][addr_reg] = dq;
 				end
 			end
 
@@ -190,7 +196,10 @@
 	/* Continuous assignments												*/
 	/************************************************************************/
 
-	assign dq = en_dq ? (RAM.exists(addr_reg) ? RAM[addr_reg] : 16'b0) : 'z;
+	// Have to use wire assignments and extra registers because dq/dqs/dqs_n
+	// are tri-state (can only use continous wire assignments)
+
+	assign dq = en_dq ? ((RAM.exists(bank_reg)&&RAM[bank_reg].exists(addr_reg)) ? RAM[bank_reg][addr_reg] : 16'b0) : 'z;
 	assign dqs = en_dqs ? dqs_reg : 'z;
 	assign dqs_n = en_dqs_n ? dqs_n_reg : 'z;
 
