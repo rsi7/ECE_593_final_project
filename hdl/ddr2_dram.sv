@@ -169,8 +169,8 @@
 				if (cke_prev && cke) begin
 
 					RAM[ba].delete(addr);
-					addr_reg <= addr;
-					bank_reg <= ba;
+					addr_reg = addr;
+					bank_reg = ba;
 					wait(dqs == 2'b00);
 					@(posedge dqs[0]);
 					$display("MSG: WRITE transaction of data '%x' to bank %d, address 0x%x at %t", dq, bank_reg, addr_reg, $time);
