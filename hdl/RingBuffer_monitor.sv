@@ -26,19 +26,19 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 	
 	// Monitor when 'reset' is applied to ring buffer
 	always @(reset) begin
-		if (reset) $display("Ring Buffer Monitor: 'reset' asserted at %0t", $time);
+		if (reset) $display("Ring Buffer Monitor: 'reset' asserted at %t", $time);
 	end
 
 	// Monitor when 'listen' is applied to ring buffer
 	always @(listen) begin
-		if (listen && !reset) $display("Ring Buffer Monitor: 'listen' asserted at %0t", $time);
+		if (listen && !reset) $display("Ring Buffer Monitor: 'listen' asserted at %t", $time);
 	end
 
 	// Monitor for strobe activity in ring buffer and capture data once it's full
 	always @(strobe) begin
 
 		if (!reset && (strobe == 1'b1)) begin
-			$display("Ring Buffer Monitor: 'strobe' detected at %0t", $time);
+			$display("Ring Buffer Monitor: 'strobe' detected at %t", $time);
 
 			r[0] = din;
 
@@ -47,7 +47,7 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 				r[i] = din;
 			end
 
-			$display("Ring Buffer Monitor: Data '%x' available in full buffer at %0t", $time, r);
+			$display("Ring Buffer Monitor: Data '%x' available in full buffer at %t", r, $time);
 		end // if
 
 	end // always @(strobe)
@@ -58,7 +58,7 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 		if (!reset) begin
 			// Wait for output 'dout'
 			@(posedge clk); // wait for dout output
-			$display("Ring Buffer Monitor: READ transaction of data '%x' from pointer address %1d at %0t", dout, readPtr, $time);
+			$display("Ring Buffer Monitor: READ transaction of data '%x' from pointer address %1d at %t", dout, readPtr, $time);
 		end // if
 
 	end // always @(readPtr)
