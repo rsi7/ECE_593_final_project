@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////
-// 
+//
 // Filename        : ddr2_ring_buffer.v
-// Description     : DDR2 8 deep input ring buffer 
+// Description     : DDR2 8 deep input ring buffer
 //                   Strobe filter and a delay line for strobe
 // Author          : Rashed Bhatti
 // Modified	       : Tzu-Ching Lin
@@ -10,55 +10,58 @@
 
 
 module ddr2_ring_buffer8(dout,listen,strobe,readPtr,din,reset);
-   input listen;   // A cycle long pulse after which ring buffer would start paying attention towards the incoming strobe
+   input listen;   // A cycle long pulse after which ring buffer would start
+				//  paying attention towards the incoming strobe
    input strobe;   // After listen the ring buffer would capture 4 data at every edges of strobe
    input reset;
    input [15:0]  din;
    input [2:0] 	 readPtr; // Read pointer, the contol logic should provide the read pointer
    output [15:0] dout;
- 
-   reg [15:0] 	 dout;   
+
+   reg [15:0] 	 dout;
    reg [15:0] 	 r0, r1, r2, r3, r4, r5, r6, r7;
    reg 			 F0;
    wire 		 fStrobe, fStrobeBar;
    reg [2:0] 	 count;
 
-// Delayline for strobe   
+// Delayline for strobe
 // --------------------
-// To tell the sysnopsys not to remove the following delay cells 
+// To tell the sysnopsys not to remove the following delay cells
 // use the following line in constraint file
 // set_dont_touch [ find cell DELAY*]
 // get_attribute [ find cell DELAY*] dont_touch
     CLKBUF2 DELAY0 (.Y(dStrobe0), .A(strobe  ));
-    CLKBUF2 DELAY1 (.Y(dStrobe1), .A(dStrobe0)); 
+    CLKBUF2 DELAY1 (.Y(dStrobe1), .A(dStrobe0));
     CLKBUF2 DELAY2 (.Y(dStrobe2), .A(dStrobe1));
     CLKBUF2 DELAY3 (.Y(dStrobe3), .A(dStrobe2));
     CLKBUF2 DELAY4 (.Y(dStrobe),  .A(dStrobe3));
 
-   							  
+
 // strobe filter
-// -------------   
+// -------------
 //     strobe   XXXX___________/-----\_____/-----\_____/-----\_____/-----\______XXXXX
-//	  
+//
 //     listen   _____/-----\______________________________________________________
-//	  
+//
 //     F0       ______/----------------------------------------------------\________
-//   
+//
 //     fStrobe  __________________/-----\_____/-----\_____/-----\_____/-----\________
+//
+//     fStrobeBar  _____________________/-----\_____/-----\_____/-----\_____/-----\__
 //
 //     count    -----0000000000000000000011111111111122222222222233333333333300000000
 
 
 
-   always @ (posedge fStrobeBar or posedge listen or posedge reset)
+   always @ (posedge fStrobeBar or posedge listen or posedge reset) // <-- NOTE: NOT clock dependent
 	 begin
 		if (reset)
-		  begin			 
+		  begin
 			 F0 <= 0;
 			 count <= 0;
 		  end
 		else if (listen)
-		  F0 <= 1;
+		  F0 <= 1;		// NOTE: latched listen, only reset after count==3
 		else
 		  begin
 			 if(count<3)
@@ -70,23 +73,23 @@ module ddr2_ring_buffer8(dout,listen,strobe,readPtr,din,reset);
 			   end
 		  end // else: !if(listen)
 	 end // always @ (posedge fStrobeBar or posedge listen or posedge reset)
-   
+
    assign fStrobe = dStrobe & (listen | F0);
    assign fStrobeBar = ~fStrobe;
 
 
 // Capture data at the edges
-// -------------------------  
+// -------------------------
    always @(posedge fStrobe)
 	 case (count)
-	   0: r0 <= din;   
+	   0: r0 <= din;
 	   1: r2 <= din;
 	   2: r4 <= din;
 	   3: r6 <= din;
 	 endcase // case(counter)
    always @(negedge fStrobe)
 	 case (count)
-	   0: r1 <= din;   
+	   0: r1 <= din;
 	   1: r3 <= din;
 	   2: r5 <= din;
 	   3: r7 <= din;
@@ -97,7 +100,7 @@ module ddr2_ring_buffer8(dout,listen,strobe,readPtr,din,reset);
 // ---------
    always @ (r0 or r1 or r2 or r3 or r4 or r5 or r6 or r7  or readPtr)
 	 begin
-		case (readPtr) 
+		case (readPtr)
 		  3'b000: dout <= r0;
 		  3'b001: dout <= r1;
 		  3'b010: dout <= r2;
@@ -106,9 +109,29 @@ module ddr2_ring_buffer8(dout,listen,strobe,readPtr,din,reset);
 		  3'b101: dout <= r5;
 		  3'b110: dout <= r6;
 		  3'b111: dout <= r7;
-		  default: dout <= r0;
+		  default: dout <= r0;	// NOTE: default R0
 		endcase // case (readPtr)
 	 end // always (r0 or r1 or r2 or r3 or r4 or readPtr)
-   
-   
+
+
 endmodule // ddr2_ring_buffer8
+
+//	TESTING NOTES:
+//		send in r0-7 data, then read it all back via ptr
+//		send in half data, read back full r0-7, send in other half, read back full r0-7
+//		set ptr to r0, read init val, send in r0, verify new val read back
+//		set r0, RESET, verify r0 val on dout during RESET
+//		set strobes WITHOUT setting listen first, verify data DIDN'T changed
+//
+//	use task function(s) in tb to drive stimulus/response:
+//		- task for driving listen, strobe, din
+//		- task for driving readPtr, latching/checking dout
+//
+//	No protocols set, aside from asserting listen before strobe (1 check)
+//		- use checker module tied to input/output lines
+//		- standard check for non-reset Xs on all lines
+//
+//
+//
+//
+//
