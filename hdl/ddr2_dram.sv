@@ -69,8 +69,9 @@
 	// don't need allocate memory for each row until it gets used
 
 	// 4-banks of arrays, each w/ 8192 entries of 16-bit values (default)
+	// RAM [bank] [row] [col]
 
-	logic unsigned [MEM_WIDTH-1:0]	RAM[*][ulogic13];
+	logic unsigned [MEM_WIDTH-1:0]	RAM[*][*][*];
 
 	localparam		CMD_READ 		= 4'b0101;
 	localparam		CMD_WRITE 		= 4'b0100;
@@ -82,8 +83,9 @@
 	ulogic1		en_dq, en_dqs, en_dqs_n;
 	ulogic2		dqs_reg, dqs_n_reg;
 
-	ulogic13	addr_reg;
 	ulogic2		bank_reg;
+	ulogic13	row_reg;
+	ulogic10	col_reg;
 
 	/************************************************************************/
 	/* always block : read/write memory										*/
@@ -93,10 +95,17 @@
 
 		case ({cs_n, ras_n, cas_n, we_n})
 
-			CMD_READ : begin
-				if ((RAM.exists(ba)&&RAM[ba].exists(addr)) && (cke_prev && cke)) begin
+			CMD_ACTIVATE : begin
+				
+				row_reg = addr;
+				bank_reg = ba;
 
-					addr_reg = addr;
+			end // CMD_ACTIVATE
+
+			CMD_READ : begin
+				if ((RAM.exists(ba) && RAM[ba].exists(row_reg) && RAM[ba][row_reg].exists(addr)) && (cke_prev && cke)) begin
+
+					col_reg = addr;
 					bank_reg = ba;
 
 					// CAS Latency
@@ -112,49 +121,49 @@
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
 					en_dq = 1'b1;
-					$display("MSG: READ transaction of data '%x' from bank %d, address 0x%x at %t", bank_reg, RAM[bank_reg][addr_reg], addr_reg, $time);
+					$display("MSG: READ transaction of data '%x' from bank %d, row 0x%x, column 0x%x at %t", RAM[bank_reg][row_reg][col_reg], bank_reg, row_reg, col_reg, $time);
 
 					// Second cycle
 					@(negedge ck);
 					dqs_reg = 2'b00;
 					dqs_n_reg = 2'b11;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Third cycle
 					@(posedge ck);
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Fourth cycle
 					@(negedge ck);
 					dqs_reg = 2'b00;
 					dqs_n_reg = 2'b11;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Fifth cycle
 					@(posedge ck);
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Sixth cycle
 					@(negedge ck);
 					dqs_reg = 2'b00;
 					dqs_n_reg = 2'b11;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Seventh cycle
 					@(posedge ck);
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// Eigth cycle
 					@(negedge ck);
 					dqs_reg = 2'b00;
 					dqs_n_reg = 2'b11;
-					addr_reg += 1'b1;
+					col_reg += 1'b1;
 
 					// End transaction
 					@(posedge ck);
@@ -163,20 +172,20 @@
 					en_dq = 1'b0;
 
 				end
-			end
+			end // CMD_READ
 
 			CMD_WRITE : begin
 				if (cke_prev && cke) begin
 
 					RAM[ba].delete(addr);
-					addr_reg = addr;
+					col_reg = addr;
 					bank_reg = ba;
 					wait(dqs == 2'b00);
 					@(posedge dqs[0]);
-					$display("MSG: WRITE transaction of data '%x' to bank %d, address 0x%x at %t", dq, bank_reg, addr_reg, $time);
-					RAM[bank_reg][addr_reg] = dq;
+					$display("MSG: WRITE transaction of data '%x' to bank %d, row 0x%x, column 0x%x at %t", dq, bank_reg, row_reg, col_reg, $time);
+					RAM[bank_reg][row_reg][col_reg] = dq;
 				end
-			end
+			end // CMD_WRITE
 
 			default : begin
 				en_dq = 1'b0;
@@ -190,7 +199,7 @@
 		// Need cke_prev && cke to read/write according to datasheet
 		cke_prev <= cke;
 
-	end
+	end // always_comb
 
 	/************************************************************************/
 	/* Continuous assignments												*/
@@ -199,7 +208,7 @@
 	// Have to use wire assignments and extra registers because dq/dqs/dqs_n
 	// are tri-state (can only use continous wire assignments)
 
-	assign dq = en_dq ? ((RAM.exists(bank_reg)&&RAM[bank_reg].exists(addr_reg)) ? RAM[bank_reg][addr_reg] : 16'b0) : 'z;
+	assign dq = en_dq ? ((RAM.exists(bank_reg) && RAM[bank_reg].exists(row_reg) && RAM[bank_reg][row_reg].exists(col_reg)) ? RAM[bank_reg][row_reg][col_reg] : 16'b0) : 'z;
 	assign dqs = en_dqs ? dqs_reg : 'z;
 	assign dqs_n = en_dqs_n ? dqs_n_reg : 'z;
 
