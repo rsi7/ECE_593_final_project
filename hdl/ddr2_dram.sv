@@ -96,9 +96,11 @@
 		case ({cs_n, ras_n, cas_n, we_n})
 
 			CMD_ACTIVATE : begin
-				
-				row_reg = addr;
-				bank_reg = ba;
+
+				if (cke_prev && cke) begin
+					row_reg = addr;
+					bank_reg = ba;
+				end
 
 			end // CMD_ACTIVATE
 

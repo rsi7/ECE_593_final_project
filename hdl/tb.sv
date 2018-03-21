@@ -242,4 +242,58 @@ module tb();
 
 	);
 
+	/************************************************************************/
+	/* Instance: DDR Monitor												*/
+	/************************************************************************/
+
+	ddr2ifc_monitor ddr2ifc_monitor0 (
+
+		.ck			(c0_ck_pad),
+		.cke		(c0_cke_pad),
+		.reset		(reset),
+
+		.addr		(c0_a_pad),
+		.ba			(c0_ba_pad),
+		.dq			(c0_dq_pad),
+		.dqs		(c0_dqs_pad[0]),
+
+		.cs_n		(c0_csbar_pad),			// I [0:0]  Active-low: enables command decoder
+		.ras_n		(c0_rasbar_pad),		// I [0:0]  Active-low row address strobe
+		.cas_n		(c0_casbar_pad),		// I [0:0]  Active-low column address strobe
+		.we_n		(c0_webar_pad)
+
+	);
+
+	/************************************************************************/
+	/* Instance: Ring Buffer Monitor										*/
+	/************************************************************************/
+
+	// instantiate ringbuffer_monitor
+
+	RingBuffer_monitor ringbuffer_monitor_0 (
+		.listen		(i_ddr2_controller.ring.listen),
+		.strobe		(i_ddr2_controller.ring.strobe),
+		.din		(i_ddr2_controller.ring.din),
+		.readPtr	(i_ddr2_controller.ring.readPtr),
+		.dout		(i_ddr2_controller.ring.dout),
+		.reset		(i_ddr2_controller.ring.reset),
+		.clk		(i_ddr2_controller.CLK)
+	);
+	
+	/************************************************************************/
+	/* Bind: Ring Buffer Assertions											*/
+	/************************************************************************/
+
+	bind ddr2_ring_buffer8 RingBuffer_assertions AssertCheckRB (
+
+		.listen		(i_ddr2_controller.ring.listen),
+		.strobe		(i_ddr2_controller.ring.strobe),
+		.din		(i_ddr2_controller.ring.din),
+		.readPtr	(i_ddr2_controller.ring.readPtr),
+	    .dout		(i_ddr2_controller.ring.dout),
+		.reset		(i_ddr2_controller.ring.reset),
+		.clk		(i_ddr2_controller.CLK)
+	);
+	
+
 endmodule // tb

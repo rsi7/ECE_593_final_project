@@ -41,7 +41,7 @@ end // always strobe
 always @(readPtr) begin	// any change in readPtr
 	if (!reset) begin
 		@(posedge clk); // wait for dout output
-		$display("%m time %0t: ReadPtr=%03b , data=%04h", $time, readPtr, dout);
+		$display("%m time %0t: readPtr=%03b , data=%04h", $time, readPtr, dout);
 	end // if
 end // always
 
