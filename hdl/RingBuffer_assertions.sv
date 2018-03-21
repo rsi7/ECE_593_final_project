@@ -1,4 +1,3 @@
-//
 // Module: RingBuffer_assertions.sv
 // Author: Chris Loop
 // Date: March 2, 2018
@@ -13,53 +12,58 @@
 //
 //	NOTE: THIS REQUIRES CLOCK AS INPUT, when ddr2_ring_buffer8 does NOT
 //
-module RingBuffer_assertions (dout,listen,strobe,readPtr,din,reset, clk);
-	input listen;
-	input strobe;
-	input reset;
-	input [15:0]	din;
-	input [2:0] 	readPtr;
-	input [15:0]	dout;
-	input clk;
+////////////////////////////////////////////////////////////////////////////////
 
-//listen must be valid unless reset
-property ValidListen();
-	@(posedge clk) disable iff (reset)
-		(!$isunknown(listen));
-endproperty
-ValidListenAssertion: assert property (ValidListen);
+`include "definitions.sv"
 
-// disabling assertion because of overwhelming amount of errors
+module RingBuffer_assertions (dout, listen, strobe, readPtr, din, reset, clk);
 
-// //strobe must be valid unless reset
-// property ValidStrobe();
-// 	@(posedge clk) disable iff (reset)
-// 		(!$isunknown(strobe));
-// endproperty
-// ValidStrobeAssertion: assert property (ValidStrobe);
+	input ulogic1	listen;
+	input ulogic1	strobe;
+	input ulogic1	reset;
+	input ulogic16	din;
+	input ulogic3	readPtr;
+	input ulogic16	dout;
+	input ulogic1	clk;
 
+	// ValidListenAssertion: 'listen' signal must be a valid value (unless device is in reset)
+	property ValidListen();
+		@(posedge clk) disable iff (reset)
+			(!$isunknown(listen));
+	endproperty
+	ValidListenAssertion: assert property (ValidListen);
 
-//din must be valid during strobes, unless reset
-property ValidDin();
-	@(posedge strobe) disable iff (reset)
-		(!$isunknown(din));
-endproperty
-ValidDinAssertion: assert property (ValidDin);
+	// disabling 'ValidStrobeAssertion' because of overwhelming amount of errors
+
+	// ValidStrobeAssertion: Strobe must be a valid value (unless device is in reset)
+	// property ValidStrobe();
+	// 	@(posedge clk) disable iff (reset)
+	// 		(!$isunknown(strobe));
+	// endproperty
+	// ValidStrobeAssertion: assert property (ValidStrobe);
 
 
-//readPtr must be valid always, unless reset
-property ValidreadPtr();
-	@(posedge clk) disable iff (reset)
-		(!$isunknown(readPtr));
-endproperty
-ValidreadPtrAssertion: assert property (ValidreadPtr);
+	// ValidDinAssertion: Input data must be valid during strobes (unless device is in reset)
+	property ValidDin();
+		@(posedge strobe) disable iff (reset)
+			(!$isunknown(din));
+	endproperty
+	ValidDinAssertion: assert property (ValidDin);
 
 
-//dout must be valid during readPtr change, unless reset
-property ValidDout();
-	@(readPtr)  disable iff (reset)	// possible?
-		(!$isunknown(dout));
-endproperty
-ValidDoutAssertion: assert property (ValidDout);
+	// ValidreadPtrAssertion: Buffer's read pointer must be always be valid (unless device is in reset)
+	property ValidreadPtr();
+		@(posedge clk) disable iff (reset)
+			(!$isunknown(readPtr));
+	endproperty
+	ValidreadPtrAssertion: assert property (ValidreadPtr);
+
+
+	// ValidDoutAssertio: Output data must be valid when read pointer changes (unless device is in reset)
+	property ValidDout();
+		@(readPtr)  disable iff (reset)	// possible?
+			(!$isunknown(dout));
+	endproperty
+	ValidDoutAssertion: assert property (ValidDout);
 
 endmodule // ringbuffer_assertions module

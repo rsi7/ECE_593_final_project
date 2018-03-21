@@ -111,17 +111,17 @@ module tb();
 		initddr  = 0;
 
 		// Check 'ready' flag to determine when controller has been initialized
-		$display("MSG: Waiting for DDR2 controller to become ready...");
+		$display("Testbench: Waiting for DDR2 controller to become ready...");
 		wait (ready);
-		$display("MSG: DDR2 controller is ready... now reading input test pattern file");
+		$display("Testbench: DDR2 controller is ready... now reading input test pattern file");
 
 		// Open test pattern input file... return error if file not found
 		InputFileCheck : assert ((i_controller_driver.fhandle_in = $fopen(`INPUT_FILE_NAME, "r")) != 0) begin
-			$display("MSG: %m was able to open input file %s successfully!", `INPUT_FILE_NAME);
+			$display("Testbench: Opened input file '%s' successfully!", `INPUT_FILE_NAME);
 		end
 
 		else begin
-			$error("ERROR: %m can't open file %s!", `INPUT_FILE_NAME);
+			$error("Testbench: Cannot open file '%s'!", `INPUT_FILE_NAME);
 			$stop;
 		end
 
@@ -131,11 +131,11 @@ module tb();
 
 		// All patterns from input file have been read... time to wrap up simulation
 		@(posedge i_controller_driver.test_pattern_injection_done);
-		$display("MSG: All test patterns are successfully applied!");
-		$display("MSG: Now waiting to let the DDR2 controller drain out...");
+		$display("Testbench: All test patterns are successfully applied!");
+		$display("Testbench: Now waiting to let the DDR2 controller drain out...");
 		
 		repeat (1500) @(negedge clk);
-		$display("MSG: End of simulation at %t", $time);
+		$display("Testbench: End of simulation at %t", $time);
 		$stop;
 
 	end // initial begin
@@ -255,7 +255,7 @@ module tb();
 		.addr		(c0_a_pad),
 		.ba			(c0_ba_pad),
 		.dq			(c0_dq_pad),
-		.dqs		(c0_dqs_pad[0]),
+		.dqs		(c0_dqs_pad),
 
 		.cs_n		(c0_csbar_pad),			// I [0:0]  Active-low: enables command decoder
 		.ras_n		(c0_rasbar_pad),		// I [0:0]  Active-low row address strobe

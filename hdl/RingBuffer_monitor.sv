@@ -3,46 +3,64 @@
 // Date: March 15th, 2018
 // Organization: Portland State University
 //
-// Description:
-// 	ring buffer monitor module, this can be enabled via
-//	conditional instantiation in top level
+// Monitor for ring buffer module located inside DDR controller.
+// This can be enabled via conditional instantiation in the top-level
+// testbench to prevent overwhelming number of messages.
 //
-module RingBuffer_monitor (dout,listen,strobe,readPtr,din,reset,clk);
-	input listen;
-	input strobe;
-	input reset;
-	input [15:0]	din;
-	input [2:0] 	readPtr;
-	input [15:0]	dout;
-	input clk;
+////////////////////////////////////////////////////////////////////////////////
+
+`include "definitions.sv"
+
+module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
+
+	input ulogic1	listen;
+	input ulogic1	strobe;
+	input ulogic1	reset;
+	input ulogic16	din;
+	input ulogic3	readPtr;
+	input ulogic16	dout;
+	input ulogic1	clk;
 
 	int count = 0;
-	logic [7:0][15:0] r;	// reg values
+	logic [7:0][15:0] r;
+	
+	// Monitor when 'reset' is applied to ring buffer
+	always @(reset) begin
+		if (reset) $display("Ring Buffer Monitor: 'reset' asserted at %0t", $time);
+	end
 
-always @(reset) if (reset) $display("%m time %0t: RESET asserted", $time);
+	// Monitor when 'listen' is applied to ring buffer
+	always @(listen) begin
+		if (listen && !reset) $display("Ring Buffer Monitor: 'listen' asserted at %0t", $time);
+	end
 
-always @(listen) if (listen && !reset) $display("%m time %0t: LISTEN asserted", $time);
+	// Monitor for strobe activity in ring buffer and capture data once it's full
+	always @(strobe) begin
 
-always @(strobe) begin
-	if (!reset && (strobe == 1'b1)) begin
-		//$display("%m time %0t: STROBE detected, data=%04h, byte R%0d", $time, din, count);
-		$display("%m time %0t: STROBE detected", $time);
+		if (!reset && (strobe == 1'b1)) begin
+			$display("Ring Buffer Monitor: 'strobe' detected at %0t", $time);
 
-		r[0] = din;
-		for (int i=1; i<8; i++) begin
-			@(strobe);	// latch data
-			r[i] = din;
-		end // for
-		$display("%m time %0t: BUFFER FULL, data=%x", $time, r);
+			r[0] = din;
 
-	end // if
-end // always strobe
+			for (int i = 1; i < 8; i++) begin
+				@(strobe);
+				r[i] = din;
+			end
 
-always @(readPtr) begin	// any change in readPtr
-	if (!reset) begin
-		@(posedge clk); // wait for dout output
-		$display("%m time %0t: readPtr=%03b , data=%04h", $time, readPtr, dout);
-	end // if
-end // always
+			$display("Ring Buffer Monitor: Data '%x' available in full buffer at %0t", $time, r);
+		end // if
+
+	end // always @(strobe)
+
+	// Monitor any read data from DRAM leaving the ring buffer...
+	always @(readPtr) begin	// any change in readPtr
+
+		if (!reset) begin
+			// Wait for output 'dout'
+			@(posedge clk); // wait for dout output
+			$display("Ring Buffer Monitor: READ transaction of data '%x' from pointer address %1d at %0t", dout, readPtr, $time);
+		end // if
+
+	end // always @(readPtr)
 
 endmodule

@@ -107,7 +107,7 @@
 			CMD_READ : begin
 				if ((RAM.exists(ba) && RAM[ba].exists(row_reg) && RAM[ba][row_reg].exists(addr)) && (cke_prev && cke)) begin
 
-					col_reg = addr;
+					col_reg = addr[9:0];
 					bank_reg = ba;
 
 					// CAS Latency
@@ -123,7 +123,6 @@
 					dqs_reg = 2'b11;
 					dqs_n_reg = 2'b00;
 					en_dq = 1'b1;
-					$display("MSG: READ transaction of data '%x' from bank %d, row 0x%x, column 0x%x at %t", RAM[bank_reg][row_reg][col_reg], bank_reg, row_reg, col_reg, $time);
 
 					// Second cycle
 					@(negedge ck);
@@ -180,12 +179,13 @@
 				if (cke_prev && cke) begin
 
 					RAM[ba].delete(addr);
-					col_reg = addr;
+					col_reg = addr[9:0];
 					bank_reg = ba;
 					wait(dqs == 2'b00);
+
 					@(posedge dqs[0]);
-					$display("MSG: WRITE transaction of data '%x' to bank %d, row 0x%x, column 0x%x at %t", dq, bank_reg, row_reg, col_reg, $time);
 					RAM[bank_reg][row_reg][col_reg] = dq;
+					
 				end
 			end // CMD_WRITE
 
