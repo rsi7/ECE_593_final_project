@@ -12,5 +12,5 @@ ddr2_controller.v
 controller_driver.sv
 ddr2ifc_monitor.sv
 RingBuffer_monitor.sv
-RingBuffer_assertions.sv
+command_monitor.sv
 top_tb.sv

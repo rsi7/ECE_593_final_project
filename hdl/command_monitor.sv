@@ -18,21 +18,28 @@ module command_monitor #(parameter DEBUG = 0) (
 	/************************************************************************/
 
 	// Globals
-
 	input ulogic1	clk,
 	input ulogic1	reset,
 
 	// Driver --> DDR2 controller
-
 	input ulogic3	cmd,
 	input ulogic2	sz,
 	input ulogic3	op,
 	input ulogic1	fetching,
 	input ulogic16	din,
-	input ulogic25	addr
+	input ulogic25	addr,
+
+	// Output packet --> checker
+	output packet	pkt
 
 	);
 
+	/************************************************************************/
+	/* Local parameters and variables										*/
+	/************************************************************************/
+
+	int count_reg = 0;
+	
 	/************************************************************************/
 	/* Debug Messaging														*/
 	/************************************************************************/
@@ -64,8 +71,9 @@ module command_monitor #(parameter DEBUG = 0) (
 
 		endcase // cmd
 
-			$display("Command Monitor: %s applied with data '%4x' to controller at bank %d, row 0x%x, column 0x%x at %t", str, din, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, $time);
+			$display("Command Monitor: %s of data '%4x' to controller at bank %d, row 0x%x, column 0x%x at %t", str, din, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, $time);
 		end
+		sendToChecker(cmd, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, din, pkt);
 	end
 
 	/************************************************************************/
@@ -134,5 +142,44 @@ module command_monitor #(parameter DEBUG = 0) (
 			((cmd != 0) && (cmd != 7)) |-> (addr[9:0] >= 10'd0) && (addr[9:0] <= 10'd1023);
 	endproperty
 	Valid_Addr_Col_Assertion: assert property(Valid_Addr_Col);
+
+	/************************************************************************/
+	/* Task: sendToChecker													*/
+	/************************************************************************/
+
+	task sendToChecker (
+
+		// Commmand signals
+		input ulogic4	cmd,
+
+		// Address signals
+		input ulogic2	bank,
+		input ulogic13	row,
+		input ulogic10	col,
+
+		// Data signals
+		input ulogic16	data,
+
+		// Output packet to checker
+		output packet	pkt
+
+	);
+
+		packet new_packet;
+
+		new_packet.timestamp = $time();
+		new_packet.id = count_reg;
+
+		new_packet.command = cmd;
+		new_packet.address.bank = bank;
+		new_packet.address.row = row;
+		new_packet.address.column = col;
+
+		new_packet.data = data;
+
+		pkt = new_packet;
+		count_reg += 1'b1;
+
+	endtask
 
 endmodule // command_monitor

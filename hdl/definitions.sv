@@ -79,6 +79,26 @@
 			
 		} DDR_CMD;
 
+		// Address structure used in packet structure below
+		typedef struct {
+
+		ulogic2		bank;
+		ulogic13	row;
+		ulogic10	column;
+
+		} packet_address;
+
+		// Packet structure for monitor modules
+		typedef struct {
+
+			int				timestamp;
+			int				id;
+			ulogic3			command;
+			packet_address	address;
+			ulogic16		data;
+
+		} packet;
+
 	endpackage
 
 	// include the above definitions in the modules

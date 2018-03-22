@@ -13,6 +13,10 @@
 
 module ddr2ifc_monitor #(parameter DEBUG = 0) (
 
+	/************************************************************************/
+	/* Top-level port declarations											*/
+	/************************************************************************/
+	
 	// Globals
 	input ulogic1	ck,		// I [0:0]  Diffpair clock for data (posedge samples)
 	input ulogic1	cke,	// I [0:0]  Active-high: enables clocking circuitry
@@ -30,8 +34,10 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 	input ulogic1	cs_n,	// I [0:0]  Active-low: enables command decoder
 	input ulogic1	ras_n,	// I [0:0]  Active-low row address strobe
 	input ulogic1	cas_n,	// I [0:0]  Active-low column address strobe
-	input ulogic1	we_n	// I [0:0]  Active low write-enable
+	input ulogic1	we_n,	// I [0:0]  Active low write-enable
 
+	// Output packet --> checker
+	output packet	pkt
 );
 
 	/************************************************************************/
@@ -51,6 +57,8 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 	ulogic10	col_reg;
 	
 	logic [7:0][15:0]	data;	// create packed array, for easy printout later
+
+	int count_reg = 0;
 
 	/************************************************************************/
 	/* always block : case statement										*/
@@ -99,7 +107,7 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 							if(DEBUG) begin
 								$display("DDR2 Monitor: READ transaction of data '%4x' from bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
 							end
-
+							sendToChecker({cs_n, ras_n, cas_n, we_n}, bank_reg, row_reg, col_reg, data, pkt);
 						end
 
 				CMD_WRITE: begin
@@ -119,12 +127,52 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 							if (DEBUG) begin
 								$display("DDR2 Monitor: WRITE transaction of data '%4x' to bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
 							end
-
+							sendToChecker({cs_n, ras_n, cas_n, we_n}, bank_reg, row_reg, col_reg, data, pkt);
 						end
 			endcase
 
 		end // if (!reset && cke && cke_prev) 
 
 	end // always
+
+	/************************************************************************/
+	/* Task: sendToChecker													*/
+	/************************************************************************/
+
+	task sendToChecker (
+
+		// Commmand signals
+		input ulogic4	cmd,
+
+		// Address signals
+		input ulogic2	bank,
+		input ulogic13	row,
+		input ulogic10	col,
+
+		// Data signals
+		input ulogic16	data,
+
+		// Output packet to checker
+		output packet	pkt
+
+	);
+
+		packet new_packet;
+
+		new_packet.timestamp = $time();
+		new_packet.id = count_reg;
+
+
+		new_packet.command = (cmd == CMD_WRITE) ? 3'd2 : 3'd1;
+		new_packet.address.bank = bank;
+		new_packet.address.row = row;
+		new_packet.address.column = col;
+
+		new_packet.data = data;
+
+		pkt = new_packet;
+		count_reg += 1'b1;
+
+	endtask
 
 endmodule

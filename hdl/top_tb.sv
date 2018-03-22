@@ -20,7 +20,7 @@
 
 module top_tb();
 
-	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/inputs/RandomWriteThenNOP.txt"
+	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/inputs/RandomDataSeqAddrWrite.txt"
 
 	/************************************************************************/
 	/* Local parameters and variables										*/
@@ -86,7 +86,12 @@ module top_tb();
 	ulogic2 	c0_dm_pad;
 	ulogic1		c0_odt_pad;
 
-	localparam int DEBUG_FLAG = 1;
+	// Packets & signals sent to checker
+	packet 		ddr_pkt;
+	packet		cmd_pkt;
+
+	// Global debug flag which will enable/disable messaging for the 3 monitors
+	localparam int DEBUG_FLAG = 0;
 
 	/************************************************************************/
 	/* System clock generation												*/
@@ -138,6 +143,13 @@ module top_tb();
 		
 		repeat (1500) @(negedge clk);
 		$display("Testbench: End of simulation at %t", $time);
+
+		// Start the checker module to compare DDR signals & commands
+		// over the course of simulation
+		i_top_checker_scoreboard.start_check;
+		wait(i_top_checker_scoreboard.done_check);
+		$display("Testbench: Finished checking at %t", $time);
+
 		$stop;
 
 	end // initial begin
@@ -260,7 +272,9 @@ module top_tb();
 		.op				(op),
 		.fetching		(fetching),
 		.din			(din),
-		.addr			(addr)
+		.addr			(addr),
+
+		.pkt			(cmd_pkt)
 	
 	);
 
@@ -282,7 +296,9 @@ module top_tb();
 		.cs_n		(c0_csbar_pad),			// I [0:0]  Active-low: enables command decoder
 		.ras_n		(c0_rasbar_pad),		// I [0:0]  Active-low row address strobe
 		.cas_n		(c0_casbar_pad),		// I [0:0]  Active-low column address strobe
-		.we_n		(c0_webar_pad)
+		.we_n		(c0_webar_pad),
+
+		.pkt		(ddr_pkt)
 
 	);
 
@@ -301,6 +317,17 @@ module top_tb();
 		.dout		(i_ddr2_controller.ring.dout),
 		.reset		(i_ddr2_controller.ring.reset),
 		.clk		(i_ddr2_controller.CLK)
+
+	);
+
+	/************************************************************************/
+	/* Instance: Checker / Scoreboard										*/
+	/************************************************************************/
+
+	top_checker_scoreboard i_top_checker_scoreboard (
+
+		.ddr_pkt		(ddr_pkt),
+		.cmd_pkt		(cmd_pkt)
 
 	);
 
