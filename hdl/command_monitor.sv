@@ -17,10 +17,16 @@ module command_monitor (
 	/* Top-level port declarations											*/
 	/************************************************************************/
 
+	// Globals
+
+	input ulogic1	clk,
+	input ulogic1	reset,
+
 	// Driver --> DDR2 controller
 
 	input ulogic3	cmd,
 	input ulogic2	sz,
+	input ulogic3	op,
 	input ulogic1	fetching,
 	input ulogic16	din,
 	input ulogic25	addr
@@ -39,13 +45,21 @@ module command_monitor (
 	endproperty
 	Valid_Command_Assertion: assert property(Valid_Command);
 
-	// Valid_Sz: ensures that size is between 0 - 64 bytes
+	// Valid_Sz: ensures that size is between 1 - 4 bytes
 	// for Block Read, Block Write, Atomic Read, Atomic Write
 	property Valid_Sz();
 		@(sz) disable iff(reset)
-			((cmd >= 3) && (cmd <= 6)) |-> (sz >= 0) && (sz <= 64);
+			((cmd >= 3) && (cmd <= 6)) |-> (sz >= 0) && (sz <= 3);
 	endproperty
 	Valid_Sz_Assertion: assert property(Valid_Sz);
+
+	// Valid_Op: ensures that op is between 1 - 8
+	// only for Atomic Read, Atomic Write
+	property Valid_Op();
+		@(op) disable iff(reset)
+			((cmd == 5) || (cmd == 6)) |-> (op >= 0) && (sz <= 7);
+	endproperty
+	Valid_Op_Assertion: assert property(Valid_Op);
 
 	// Valid_Fetching_Assertion: ensures that fetching is 1 or 0
 	property Valid_Fetching();

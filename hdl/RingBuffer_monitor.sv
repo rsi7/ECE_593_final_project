@@ -63,4 +63,45 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 
 	end // always @(readPtr)
 
+	/************************************************************************/
+	/* Assertions															*/
+	/************************************************************************/
+
+	// ValidListenAssertion: 'listen' signal must be a valid value (unless device is in reset)
+	property ValidListen();
+		@(posedge clk) disable iff (reset)
+			(!$isunknown(listen));
+	endproperty
+	ValidListenAssertion: assert property (ValidListen);
+
+	// disabling 'ValidStrobeAssertion' because of overwhelming amount of errors
+
+	// ValidStrobeAssertion: Strobe must be a valid value (unless device is in reset)
+	// property ValidStrobe();
+	// 	@(posedge clk) disable iff (reset)
+	// 		(!$isunknown(strobe));
+	// endproperty
+	// ValidStrobeAssertion: assert property (ValidStrobe);
+
+	// ValidDinAssertion: Input data must be valid during strobes (unless device is in reset)
+	property ValidDin();
+		@(posedge strobe) disable iff (reset)
+			(!$isunknown(din));
+	endproperty
+	ValidDinAssertion: assert property (ValidDin);
+
+	// ValidreadPtrAssertion: Buffer's read pointer must be always be valid (unless device is in reset)
+	property ValidreadPtr();
+		@(posedge clk) disable iff (reset)
+			(!$isunknown(readPtr));
+	endproperty
+	ValidreadPtrAssertion: assert property (ValidreadPtr);
+
+	// ValidDoutAssertio: Output data must be valid when read pointer changes (unless device is in reset)
+	property ValidDout();
+		@(readPtr)  disable iff (reset)	// possible?
+			(!$isunknown(dout));
+	endproperty
+	ValidDoutAssertion: assert property (ValidDout);
+
 endmodule

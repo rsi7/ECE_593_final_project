@@ -248,6 +248,10 @@ module top_tb();
 
 	command_monitor i_command_monitor (
 
+		// Globals
+		.clk			(clk),
+		.reset			(reset),
+
 		// Driver --> DDR2 controller
 		.cmd			(cmd),
 		.sz				(sz),
@@ -287,6 +291,7 @@ module top_tb();
 	// instantiate ringbuffer_monitor
 
 	RingBuffer_monitor ringbuffer_monitor_0 (
+
 		.listen		(i_ddr2_controller.ring.listen),
 		.strobe		(i_ddr2_controller.ring.strobe),
 		.din		(i_ddr2_controller.ring.din),
@@ -294,22 +299,7 @@ module top_tb();
 		.dout		(i_ddr2_controller.ring.dout),
 		.reset		(i_ddr2_controller.ring.reset),
 		.clk		(i_ddr2_controller.CLK)
+		
 	);
-	
-	/************************************************************************/
-	/* Bind: Ring Buffer Assertions											*/
-	/************************************************************************/
-
-	bind ddr2_ring_buffer8 RingBuffer_assertions AssertCheckRB (
-
-		.listen		(i_ddr2_controller.ring.listen),
-		.strobe		(i_ddr2_controller.ring.strobe),
-		.din		(i_ddr2_controller.ring.din),
-		.readPtr	(i_ddr2_controller.ring.readPtr),
-	    .dout		(i_ddr2_controller.ring.dout),
-		.reset		(i_ddr2_controller.ring.reset),
-		.clk		(i_ddr2_controller.CLK)
-	);
-	
 
 endmodule // tb
