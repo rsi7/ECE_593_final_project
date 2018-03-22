@@ -1,4 +1,4 @@
-// Module: tb.sv
+// Module: top_tb.sv
 // Author: Rehan Iqbal
 // Date: March 17th, 2018
 // Organziation: Portland State University
@@ -18,7 +18,7 @@
 `include "definitions.sv"
 `timescale  1ns / 10ps
 
-module tb();
+module top_tb();
 
 	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
 

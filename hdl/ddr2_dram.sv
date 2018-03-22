@@ -71,7 +71,7 @@
 	// 4-banks of arrays, each w/ 8192 entries of 16-bit values (default)
 	// RAM [bank] [row] [col]
 
-	logic unsigned [MEM_WIDTH-1:0]	RAM[*][*][*];
+	logic unsigned [MEM_WIDTH-1:0]	RAM[ulogic3][ulogic14][ulogic11];
 
 	localparam		CMD_READ 		= 4'b0101;
 	localparam		CMD_WRITE 		= 4'b0100;
@@ -105,7 +105,7 @@
 			end // CMD_ACTIVATE
 
 			CMD_READ : begin
-				if ((RAM.exists(ba) && RAM[ba].exists(row_reg) && RAM[ba][row_reg].exists(addr)) && (cke_prev && cke)) begin
+				if ((RAM.exists(ba) && RAM[ba].exists(row_reg) && RAM[ba][row_reg].exists(addr[9:0])) && (cke_prev && cke)) begin
 
 					col_reg = addr[9:0];
 					bank_reg = ba;
@@ -178,14 +178,14 @@
 			CMD_WRITE : begin
 				if (cke_prev && cke) begin
 
-					RAM[ba].delete(addr);
+					RAM[ba][row_reg].delete(addr[9:0]);
 					col_reg = addr[9:0];
 					bank_reg = ba;
 					wait(dqs == 2'b00);
 
 					@(posedge dqs[0]);
 					RAM[bank_reg][row_reg][col_reg] = dq;
-					
+
 				end
 			end // CMD_WRITE
 
