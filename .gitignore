@@ -7,11 +7,6 @@ $ cat .gitignore
 
 /docs/*
 
-# skip the input trace file for now
-# since this will changes thousands of lines
-
-/hdl/ddr2_test_pattern.txt
-
 # skip everything in input files
 # these are long trace files which can clog git
 /inputs/*

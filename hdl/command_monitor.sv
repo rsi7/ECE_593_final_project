@@ -49,7 +49,22 @@ module command_monitor #(parameter DEBUG = 0) (
 	always@(cmd, addr, din) begin
 
 		if (DEBUG) begin
-			$display("Command Monitor: Command %d applied with data '%4x' to controller at bank %d, row 0x%x, column 0x%x at %t", cmd, din, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, $time);
+
+			string str;
+
+			case (cmd)
+
+			(3'd0) : str = "NOP";
+			(3'd1) : str = "Scalar read";
+			(3'd2) : str = "Scalar write";
+			(3'd4) : str = "Block write";
+			(3'd5) : str = "Atomic read";
+			(3'd6) : str = "Atomic write";
+			(3'd7) : str = "NOP";
+
+		endcase // cmd
+
+			$display("Command Monitor: %s applied with data '%4x' to controller at bank %d, row 0x%x, column 0x%x at %t", str, din, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, $time);
 		end
 	end
 

@@ -20,7 +20,7 @@
 
 module top_tb();
 
-	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/hdl/ddr2_test_pattern.txt"
+	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/inputs/RandomWriteThenNOP.txt"
 
 	/************************************************************************/
 	/* Local parameters and variables										*/
