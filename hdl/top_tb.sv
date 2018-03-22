@@ -86,7 +86,7 @@ module top_tb();
 	ulogic2 	c0_dm_pad;
 	ulogic1		c0_odt_pad;
 
-	localparam int DEBUG_FLAG = 0;
+	localparam int DEBUG_FLAG = 1;
 
 	/************************************************************************/
 	/* System clock generation												*/

@@ -34,6 +34,26 @@ module command_monitor #(parameter DEBUG = 0) (
 	);
 
 	/************************************************************************/
+	/* Debug Messaging														*/
+	/************************************************************************/
+
+	// Monitor reset applied to the controller
+	always@(reset) begin
+
+		if (DEBUG) begin
+			$display("Command Monitor: Reset applied to controller at %t", $time);
+		end
+	end
+
+	// Monitor commands, addr, data being applied to the controller
+	always@(cmd, addr, din) begin
+
+		if (DEBUG) begin
+			$display("Command Monitor: Command %d applied with data '%4x' to controller at bank %d, row 0x%x, column 0x%x at %t", cmd, din, addr[4:3], addr[24:12], {addr[11:5],addr[2:0]}, $time);
+		end
+	end
+
+	/************************************************************************/
 	/* Assertions															*/
 	/************************************************************************/
 
@@ -48,7 +68,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Sz: ensures that size is between 1 - 4 bytes
 	// for Block Read, Block Write, Atomic Read, Atomic Write
 	property Valid_Sz();
-		@(sz) disable iff(reset)
+		@(sz, cmd) disable iff(reset)
 			((cmd >= 3) && (cmd <= 6)) |-> (sz >= 0) && (sz <= 3);
 	endproperty
 	Valid_Sz_Assertion: assert property(Valid_Sz);
@@ -56,7 +76,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Op: ensures that op is between 1 - 8
 	// only for Atomic Read, Atomic Write
 	property Valid_Op();
-		@(op) disable iff(reset)
+		@(op, cmd) disable iff(reset)
 			((cmd == 5) || (cmd == 6)) |-> (op >= 0) && (sz <= 7);
 	endproperty
 	Valid_Op_Assertion: assert property(Valid_Op);
@@ -71,7 +91,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Din: ensures that data input is in range (16'h0000 to 16'hFFFF)
 	// for Scalar Write, Block Write, Atomic Read, Atomic Write
 	property Valid_Din();
-		@(din) disable iff(reset)
+		@(din, cmd) disable iff(reset)
 			(cmd == 2) || (cmd >= 4 && cmd <= 6) |-> (din >= 16'h0000) && (din <= 16'hFFFF);
 	endproperty
 	Valid_Din_Assertion: assert property(Valid_Din);
@@ -79,7 +99,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Addr_Bank: ensures that bank address input is in range (0 to 3)
 	// when command is legitimate read/write (i.e. not a NOP)
 	property Valid_Addr_Bank();
-		@(addr) disable iff(reset)
+		@(addr, cmd) disable iff(reset)
 			((cmd != 0) && (cmd != 7)) |-> (addr[4:3] >= 2'd0) && (addr[4:3] <= 2'd3);
 	endproperty
 	Valid_Addr_Bank_Assertion: assert property(Valid_Addr_Bank);
@@ -87,7 +107,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Addr_Row: ensures that row address input is in range (0 to 8191)
 	// when command is legitimate read/write (i.e. not a NOP)
 	property Valid_Addr_Row();
-		@(addr) disable iff(reset)
+		@(addr, cmd) disable iff(reset)
 			((cmd != 0) && (cmd != 7)) |-> (addr[24:12] >= 13'd0) && (addr[4:3] <= 13'd8191);
 	endproperty
 	Valid_Addr_Row_Assertion: assert property(Valid_Addr_Row);
@@ -95,7 +115,7 @@ module command_monitor #(parameter DEBUG = 0) (
 	// Valid_Addr_Col: ensures that column address input is in range (0 to 1023)
 	// when command is legitimate read/write (i.e. not a NOP)
 	property Valid_Addr_Col();
-		@(addr) disable iff(reset)
+		@(addr, cmd) disable iff(reset)
 			((cmd != 0) && (cmd != 7)) |-> (addr[9:0] >= 10'd0) && (addr[9:0] <= 10'd1023);
 	endproperty
 	Valid_Addr_Col_Assertion: assert property(Valid_Addr_Col);

@@ -97,7 +97,7 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 							end // for
 
 							if(DEBUG) begin
-								$display("DDR2 Monitor: READ transaction of data '%x' from bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+								$display("DDR2 Monitor: READ transaction of data '%4x' from bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
 							end
 
 						end
@@ -117,7 +117,7 @@ module ddr2ifc_monitor #(parameter DEBUG = 0) (
 							end
 							
 							if (DEBUG) begin
-								$display("DDR2 Monitor: WRITE transaction of data '%x' to bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+								$display("DDR2 Monitor: WRITE transaction of data '%4x' to bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
 							end
 
 						end

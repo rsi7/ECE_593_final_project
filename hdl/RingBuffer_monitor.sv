@@ -24,6 +24,10 @@ module RingBuffer_monitor #(parameter DEBUG = 0) (dout, listen, strobe, readPtr,
 	int count = 0;
 	logic [7:0][15:0] r;
 	
+	/************************************************************************/
+	/* Debug Messaging														*/
+	/************************************************************************/
+
 	// Monitor when 'reset' is applied to ring buffer
 	always @(reset) begin
 
