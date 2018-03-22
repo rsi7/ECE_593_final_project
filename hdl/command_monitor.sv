@@ -11,7 +11,7 @@
 
 `include "definitions.sv"
 
-module command_monitor (
+module command_monitor #(parameter DEBUG = 0) (
 
 	/************************************************************************/
 	/* Top-level port declarations											*/

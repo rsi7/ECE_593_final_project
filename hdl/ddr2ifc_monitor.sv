@@ -11,7 +11,7 @@
 
 `include "definitions.sv"
 
-module ddr2ifc_monitor (
+module ddr2ifc_monitor #(parameter DEBUG = 0) (
 
 	// Globals
 	input ulogic1	ck,		// I [0:0]  Diffpair clock for data (posedge samples)
@@ -69,11 +69,18 @@ module ddr2ifc_monitor (
 							row_reg = addr;
 							bank_reg = ba;
 
-							$display("DDR2 Monitor: ACTIVATE to bank %d, row 0x%x at time %t", bank_reg, row_reg, $time);
+							if (DEBUG) begin
+								$display("DDR2 Monitor: ACTIVATE to bank %d, row 0x%x at time %t", bank_reg, row_reg, $time);
+							end
 						
 						end
 				
-				CMD_PRECHRG: $display("DDR2 Monitor: PRECHARGE detected at time %t", $time);
+				CMD_PRECHRG: begin
+
+						if (DEBUG) begin
+							$display("DDR2 Monitor: PRECHARGE detected at time %t", $time);
+						end
+					end
 				
 				CMD_READ: begin
 
@@ -89,7 +96,9 @@ module ddr2ifc_monitor (
 								data[i] = dq;
 							end // for
 
-							$display("DDR2 Monitor: READ transaction of data '%x' from bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+							if(DEBUG) begin
+								$display("DDR2 Monitor: READ transaction of data '%x' from bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+							end
 
 						end
 
@@ -107,7 +116,9 @@ module ddr2ifc_monitor (
 								data[i] = dq;
 							end
 							
-							$display("DDR2 Monitor: WRITE transaction of data '%x' to bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+							if (DEBUG) begin
+								$display("DDR2 Monitor: WRITE transaction of data '%x' to bank %d, row 0x%x, column 0x%x at %t", data, bank_reg, row_reg, col_reg, $time);
+							end
 
 						end
 			endcase

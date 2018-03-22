@@ -86,6 +86,8 @@ module top_tb();
 	ulogic2 	c0_dm_pad;
 	ulogic1		c0_odt_pad;
 
+	localparam int DEBUG_FLAG = 0;
+
 	/************************************************************************/
 	/* System clock generation												*/
 	/************************************************************************/
@@ -246,7 +248,7 @@ module top_tb();
 	/* Instance: Command Monitor											*/
 	/************************************************************************/
 
-	command_monitor i_command_monitor (
+	command_monitor #(.DEBUG(DEBUG_FLAG)) i_command_monitor (
 
 		// Globals
 		.clk			(clk),
@@ -266,7 +268,7 @@ module top_tb();
 	/* Instance: DDR Monitor												*/
 	/************************************************************************/
 
-	ddr2ifc_monitor ddr2ifc_monitor0 (
+	ddr2ifc_monitor #(.DEBUG(DEBUG_FLAG)) ddr2ifc_monitor0 (
 
 		.ck			(c0_ck_pad),
 		.cke		(c0_cke_pad),
@@ -290,7 +292,7 @@ module top_tb();
 
 	// instantiate ringbuffer_monitor
 
-	RingBuffer_monitor ringbuffer_monitor_0 (
+	RingBuffer_monitor #(.DEBUG(DEBUG_FLAG)) ringbuffer_monitor_0 (
 
 		.listen		(i_ddr2_controller.ring.listen),
 		.strobe		(i_ddr2_controller.ring.strobe),
@@ -299,7 +301,7 @@ module top_tb();
 		.dout		(i_ddr2_controller.ring.dout),
 		.reset		(i_ddr2_controller.ring.reset),
 		.clk		(i_ddr2_controller.CLK)
-		
+
 	);
 
 endmodule // tb

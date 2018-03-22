@@ -11,7 +11,7 @@
 
 `include "definitions.sv"
 
-module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
+module RingBuffer_monitor #(parameter DEBUG = 0) (dout, listen, strobe, readPtr, din, reset, clk);
 
 	input ulogic1	listen;
 	input ulogic1	strobe;
@@ -26,19 +26,28 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 	
 	// Monitor when 'reset' is applied to ring buffer
 	always @(reset) begin
-		if (reset) $display("Ring Buffer Monitor: 'reset' asserted at %t", $time);
+
+		if (DEBUG) begin
+			if (reset) $display("Ring Buffer Monitor: 'reset' asserted at %t", $time);
+		end
 	end
 
 	// Monitor when 'listen' is applied to ring buffer
 	always @(listen) begin
-		if (listen && !reset) $display("Ring Buffer Monitor: 'listen' asserted at %t", $time);
+
+		if (DEBUG) begin
+			if (listen && !reset) $display("Ring Buffer Monitor: 'listen' asserted at %t", $time);
+		end
 	end
 
 	// Monitor for strobe activity in ring buffer and capture data once it's full
 	always @(strobe) begin
 
 		if (!reset && (strobe == 1'b1)) begin
-			$display("Ring Buffer Monitor: 'strobe' detected at %t", $time);
+
+			if (DEBUG) begin
+				$display("Ring Buffer Monitor: 'strobe' detected at %t", $time);
+			end
 
 			r[0] = din;
 
@@ -47,8 +56,11 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 				r[i] = din;
 			end
 
-			$display("Ring Buffer Monitor: Data '%x' available in full buffer at %t", r, $time);
-		end // if
+			if (DEBUG) begin
+				$display("Ring Buffer Monitor: Data '%x' available in full buffer at %t", r, $time);
+			end
+
+		end // if (!reset && (strobe == 1'b1))
 
 	end // always @(strobe)
 
@@ -58,7 +70,11 @@ module RingBuffer_monitor (dout, listen, strobe, readPtr, din, reset, clk);
 		if (!reset) begin
 			// Wait for output 'dout'
 			@(posedge clk); // wait for dout output
-			$display("Ring Buffer Monitor: READ transaction of data '%x' from pointer address %1d at %t", dout, readPtr, $time);
+
+			if (DEBUG) begin
+				$display("Ring Buffer Monitor: READ transaction of data '%x' from pointer address %1d at %t", dout, readPtr, $time);
+			end
+
 		end // if
 
 	end // always @(readPtr)
