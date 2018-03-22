@@ -12,6 +12,10 @@ $ cat .gitignore
 
 /hdl/ddr2_test_pattern.txt
 
+# skip everything in input files
+# these are long trace files which can clog git
+/inputs/*
+
 # skip everything in results
 # text files & PDF waveform plot
 
