@@ -13,4 +13,5 @@ controller_driver.sv
 ddr2ifc_monitor.sv
 RingBuffer_monitor.sv
 command_monitor.sv
+top_checker_scoreboard.sv
 top_tb.sv

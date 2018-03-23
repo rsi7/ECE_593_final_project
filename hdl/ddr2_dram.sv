@@ -1,6 +1,6 @@
 // Module: ddr2_dram.sv
 // Author: Rehan Iqbal
-// Date: March 17th, 2018
+// Date: March 22nd, 2018
 // Organziation: Portland State University
 //
 // Description:
@@ -10,8 +10,11 @@
 // WE# pins to determine when there is a valid read or write. This assumes
 // that the previous cycle & current cycle that CE is high.
 //
-//  It stores the data in a simple 2-dimensional array (no timing checks or 
-// further protocol checking here).
+//  It stores the data in a simple 3-dimensional associative array 
+// (no timing checks or further protocol checking here).
+//
+// The data signals (dq, dqs, dqs_n) have to be bidirectional so gating
+// with a tri-state wire assignment is used in the end of the module.
 //
 // Commands (CS#/RAS#/CAS#/WE#):
 //

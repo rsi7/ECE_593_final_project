@@ -1,13 +1,17 @@
 // Module: command_monitor.sv
 // Author: Rehan Iqbal
-// Date: March 15th, 2018
+// Date: March 22nd, 2018
 // Organization: Portland State University
 //
 // Monitor for command bus going between controller driver and DDR2
-// controller. Contains assertions to ensure that no illegal commands,
-// data, or addresses are submitted to the DDR2 controller.
+// controller. The monitor will log all transactions to console if the
+// global 'DEBUG' parameter is set. It will also run assertions to check the
+// protocol and make sure no invalid data/addr/cmd are applied. Lastly,
+// it creates a packet of the memory transaction (read/write) and passes it
+// to the checker module so it can check against the ddr packet.
 //
 ////////////////////////////////////////////////////////////////////////////////
+
 
 `include "definitions.sv"
 

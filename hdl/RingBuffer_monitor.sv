@@ -1,11 +1,13 @@
 // Module: RingBuffer_monitor.sv
-// Author: Chris Loop
-// Date: March 15th, 2018
+// Author: Chris Loop (modified by Rehan Iqbal)
+// Date: March 22nd, 2018
 // Organization: Portland State University
 //
 // Monitor for ring buffer module located inside DDR controller.
-// This can be enabled via conditional instantiation in the top-level
-// testbench to prevent overwhelming number of messages.
+// It will log all activity on the strobe/listen/dq/etc. signals to console
+// if the global 'DEBUG' parameter is set. It will also run assertions to
+// check the protocol and make sure read data are processed successfully
+// back into the DDR controller.
 //
 ////////////////////////////////////////////////////////////////////////////////
 

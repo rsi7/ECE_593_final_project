@@ -1,6 +1,6 @@
 // Module: top_tb.sv
 // Author: Rehan Iqbal
-// Date: March 17th, 2018
+// Date: March 22nd, 2018
 // Organziation: Portland State University
 //
 // The testbench provides a 500MHz clock (250MHz DDR clock) and active-low reset... 
@@ -9,9 +9,25 @@
 // which handles this through the 'init_enginer' module.
 //
 // After 'ready' goes high, the testbench initiates the first 'FetchNextTestPattern'
-// task in the driver module. Then it waits - Once all patterns have been read,
+// task in the driver module. Then it waits - once all patterns have been read,
 // 'test_pattern_injection_done' flag set in the driver module will let the 
-// testbench know to end simulation.
+// testbench know to all commands have been  applied. The testbench will start 
+// a task (start_check) in the checker to verify all ddr transactions match the 
+// commands sent to the controller. Then it terminates simulation.
+//
+// IMPORTANT TO NOTE:
+//
+// 1) You can change the test case applied by modifying the INPUT_FILE_NAME
+// below to point at another text file. There are 4 test cases available
+// to test the top-level testbench... see the /inputs directory.
+//
+// 2) You can enable/disable the number of messages in the Questa console
+// by setting the local parameter DEBUG to either 1'b0 or 1'b1. This
+// will turn off/on messaging in the 3 monitor modules.
+//
+// 3) Checker runs at the very end of simulation - if you are running a long
+// test case, wait until the end to see it! Disabling the debug messages
+// helps speed up simulation.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -20,7 +36,7 @@
 
 module top_tb();
 
-	`define INPUT_FILE_NAME "C:/Users/riqbal/Dropbox/ECE 593/Final Project/inputs/RandomDataSeqAddrWrite.txt"
+	`define INPUT_FILE_NAME "../inputs/RandomDataSeqAddrWrite.txt"
 
 	/************************************************************************/
 	/* Local parameters and variables										*/
@@ -91,7 +107,7 @@ module top_tb();
 	packet		cmd_pkt;
 
 	// Global debug flag which will enable/disable messaging for the 3 monitors
-	localparam int DEBUG_FLAG = 0;
+	localparam int DEBUG_FLAG = 1;
 
 	/************************************************************************/
 	/* System clock generation												*/

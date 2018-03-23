@@ -1,6 +1,6 @@
 // Module: controller_driver.sv
 // Author: Rehan Iqbal
-// Date: March 17th, 2018
+// Date: March 22nd, 2018
 // Organziation: Portland State University
 //
 // This module reads an input file with memory test cases, parses
@@ -13,7 +13,7 @@
 // determining whether to fetch/apply next commands.
 //
 // Once all patterns have been read, it sets the 'test_pattern_injection_done'
-// which will wrap up simulation in the parent-level testbench.
+// which will start to wrap up simulation in the parent-level testbench.
 //
 ////////////////////////////////////////////////////////////////////////////////
 

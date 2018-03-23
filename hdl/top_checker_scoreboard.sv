@@ -1,10 +1,10 @@
 // Module: top_checker_scoreboard.sv
 // Author: Rehan Iqbal
-// Date: March 17th, 2018
+// Date: March 22nd, 2018
 // Organziation: Portland State University
 //
-// This checker/scoreboard takes in an input packet (cmd_pkt from the command_monitor)
-// and an output packet (ddr_pkt from the ddr_monitor) and stores them all
+// This checker/scoreboard takes in a packet (cmd_pkt from the command_monitor)
+// and an another packet  (ddr_pkt from the ddr_monitor) and stores them all
 // in arrays. At the end of simulation (signalled with 'start_check') it will
 // make sure all output packets have a corresponding input packet and vice-versa.
 //

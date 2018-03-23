@@ -1,12 +1,12 @@
 // Module: definitions.pkg
 // Author: Rehan Iqbal
-// Date: January 15th, 2018
+// Date: March 22nd, 2018
 // Organization: Portland State University
 //
 // Description:
 // ------------
-// Package definitions file for the ECE 593 Lab #1 module & testbench. 
-// Contains type definitions for unsigned vars & parameters for FSM states.
+// Package definitions file for the ECE 593 final project testbench. 
+// Contains type definitions for unsigned vars & structs for packets.
 //
 // Include in target modules through syntax: `include "definitions.pkg"
 // Make sure library paths include this file!
@@ -52,32 +52,6 @@
 		typedef	shortint	unsigned			uint16;
 		typedef	int			unsigned			uint32;
 		typedef	longint		unsigned			uint64;
-
-		// Enum for input file commands
-		typedef enum logic unsigned [2:0] {	
-
-			NOP1		= 3'b000,
-			SCR			= 3'b001,
-			SCW			= 3'b010,
-			BLR			= 3'b011,
-			BLW			= 3'b100,
-			ATR			= 3'b101,
-			ATW			= 3'b110,
-			NOP2		= 3'b111
-			
-		} FILE_CMD;
-
-		// Enum for DDR commands
-		// { CS# / RAS# / CAS# / WE# }
-		typedef enum logic unsigned [3:0] {	
-
-			READ		= 4'b0101,
-			WRITE		= 4'b0100,
-			ACTIVATE	= 4'b0011,
-			PRECHRG		= 4'b0010,
-			NOP_DDR		= 4'b0111
-			
-		} DDR_CMD;
 
 		// Address structure used in packet structure below
 		typedef struct {

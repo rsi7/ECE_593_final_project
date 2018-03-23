@@ -1,11 +1,14 @@
 // Module: ddr2ifc_monitor.sv
 // Author: Chris Loop (modified by Rehan Iqbal)
-// Date: March 20th, 2018
+// Date: March 22nd, 2018
 // Organization: Portland State University
 //
 // Monitor for the interface between DDR2 controller and DRAM. The monitor
 // will log all transactions based on the address signals (addr/ba) and commands
-// (cs_n, ras_n, cas_n, we_n).
+// (cs_n, ras_n, cas_n, we_n) if the global 'DEBUG' parameter is set. It will also
+// run assertions to check the protocol. Lastly, it creates a packet of the
+// memory transaction (read/write) and passes it to the checker module so it
+// can check against the command packet.
 //
 ////////////////////////////////////////////////////////////////////////////////
 

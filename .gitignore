@@ -9,7 +9,13 @@ $ cat .gitignore
 
 # skip everything in input files
 # these are long trace files which can clog git
+
 /inputs/*
+
+# skip everything in the hdl/work folder
+# this is created by Questa when using vlog/vsim
+
+/hdl/work/*
 
 # skip everything in results
 # text files & PDF waveform plot
